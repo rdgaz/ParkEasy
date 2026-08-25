@@ -241,44 +241,48 @@ public class MainForm : Form
     {
         var panel = new Panel
         {
-            Height = 56,
-            Padding = new Padding(0, 0, 0, 12),
+            Height = 48,
+            Margin = new Padding(0, 16, 0, 12), // 16px de respiro em relação aos cards acima
+            Padding = new Padding(0),
             BackColor = Color.Transparent
         };
 
+        int buttonY = 4; // Ligeiro alinhamento vertical dos botões
+
         var btnEntry = Theme.CreateSuccessButton("＋ NOVA ENTRADA (F2)", 220);
-        btnEntry.Location = new Point(0, 0);
+        btnEntry.Location = new Point(0, buttonY);
         btnEntry.Click += (_, _) => OpenEntryForm();
         panel.Controls.Add(btnEntry);
 
         var btnCheckout = Theme.CreatePrimaryButton("REGISTRAR SAÍDA", 210);
-        btnCheckout.Location = new Point(230, 0);
+        btnCheckout.Location = new Point(230, buttonY);
         btnCheckout.BackColor = Theme.Warning;
         btnCheckout.FlatAppearance.MouseOverBackColor = Color.FromArgb(217, 119, 6);
         btnCheckout.Click += (_, _) => OpenCheckoutForSelected();
         panel.Controls.Add(btnCheckout);
 
         var btnHistory = Theme.CreateSecondaryButton("HISTÓRICO (F6)", 160);
-        btnHistory.Location = new Point(450, 0);
+        btnHistory.Location = new Point(450, buttonY);
         btnHistory.Click += (_, _) => OpenHistoryForm();
         panel.Controls.Add(btnHistory);
 
         var btnRefresh = Theme.CreateSecondaryButton("ATUALIZAR (F5)", 150);
-        btnRefresh.Location = new Point(620, 0);
+        btnRefresh.Location = new Point(620, buttonY);
         btnRefresh.Click += async (_, _) => await LoadDataAsync();
         panel.Controls.Add(btnRefresh);
 
-        // Search Input (Right aligned with generous width)
+        // Search Input (Direita)
         _txtSearch = Theme.CreateInput(300);
         _txtSearch.PlaceholderText = "Pesquisar placa ou cliente (F4)...";
         _txtSearch.CharacterCasing = CharacterCasing.Upper;
-        _txtSearch.Location = new Point(panel.Width - 300, 4);
+        _txtSearch.Location = new Point(panel.Width - 300, buttonY);
         _txtSearch.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         _txtSearch.TextChanged += async (_, _) => await FilterActiveSessionsAsync();
         panel.Controls.Add(_txtSearch);
 
         return panel;
     }
+
 
     private Panel CreateStatusPanel()
     {
