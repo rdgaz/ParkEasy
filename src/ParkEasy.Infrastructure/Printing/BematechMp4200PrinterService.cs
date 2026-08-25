@@ -1,0 +1,270 @@
+using System.Text;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using ParkEasy.Application.Configuration;
+using ParkEasy.Application.DTOs;
+using ParkEasy.Application.Interfaces;
+
+namespace ParkEasy.Infrastructure.Printing;
+
+/// <summary>
+/// Bematech MP-4200 TH thermal printer implementation using ESC/POS commands via raw Windows spooler.
+/// </summary>
+public class BematechMp4200PrinterService : IPrinterService
+{
+    private readonly PrinterSettings _settings;
+    private readonly ILogger<BematechMp4200PrinterService> _logger;
+
+    // ESC/POS command constants
+    private static readonly byte[] CMD_INIT = [0x1B, 0x40]; // Initialize printer
+    private static readonly byte[] CMD_CENTER = [0x1B, 0x61, 0x01]; // Center align
+    private static readonly byte[] CMD_LEFT = [0x1B, 0x61, 0x00]; // Left align
+    private static readonly byte[] CMD_BOLD_ON = [0x1B, 0x45, 0x01]; // Bold on
+    private static readonly byte[] CMD_BOLD_OFF = [0x1B, 0x45, 0x00]; // Bold off
+    private static readonly byte[] CMD_DOUBLE_SIZE = [0x1D, 0x21, 0x11]; // Double width + height
+    private static readonly byte[] CMD_NORMAL_SIZE = [0x1D, 0x21, 0x00]; // Normal size
+    private static readonly byte[] CMD_CUT = [0x1D, 0x56, 0x42, 0x03]; // Partial cut with feed
+    private static readonly byte[] CMD_FEED = [0x0A]; // Line feed
+
+    private readonly Encoding _encoding;
+
+    public BematechMp4200PrinterService(
+        IOptions<PrinterSettings> settings,
+        ILogger<BematechMp4200PrinterService> logger)
+    {
+        _settings = settings.Value;
+        _logger = logger;
+
+        // Register code page provider for Brazilian character support
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        _encoding = Encoding.GetEncoding(850); // CP850 — Latin-1 for Portuguese
+    }
+
+    public Task PrintEntryTicketAsync(ParkingTicket ticket)
+    {
+        _logger.LogInformation("Impressão de ticket iniciada: {TicketNumber}", ticket.TicketNumber);
+
+        try
+        {
+            using var ms = new MemoryStream();
+
+            Write(ms, CMD_INIT);
+
+            // Header
+            Write(ms, CMD_CENTER);
+            Write(ms, CMD_BOLD_ON);
+            Write(ms, CMD_DOUBLE_SIZE);
+            WriteText(ms, "ESTACIONAMENTO");
+            Write(ms, CMD_NORMAL_SIZE);
+            Write(ms, CMD_BOLD_OFF);
+            WriteText(ms, "");
+
+            // Ticket number
+            Write(ms, CMD_BOLD_ON);
+            WriteText(ms, $"Ticket: {ticket.TicketNumber}");
+            Write(ms, CMD_BOLD_OFF);
+            WriteText(ms, "");
+
+            // Plate
+            Write(ms, CMD_LEFT);
+            Write(ms, CMD_BOLD_ON);
+            WriteText(ms, "PLACA:");
+            Write(ms, CMD_DOUBLE_SIZE);
+            WriteText(ms, ticket.Plate);
+            Write(ms, CMD_NORMAL_SIZE);
+            Write(ms, CMD_BOLD_OFF);
+            WriteText(ms, "");
+
+            // Model (optional)
+            if (!string.IsNullOrWhiteSpace(ticket.VehicleModel))
+            {
+                WriteText(ms, "MODELO:");
+                WriteText(ms, ticket.VehicleModel);
+                WriteText(ms, "");
+            }
+
+            // Customer (optional)
+            if (!string.IsNullOrWhiteSpace(ticket.CustomerName))
+            {
+                WriteText(ms, "CLIENTE:");
+                WriteText(ms, ticket.CustomerName);
+                WriteText(ms, "");
+            }
+
+            // Entry date/time
+            WriteText(ms, "ENTRADA:");
+            WriteText(ms, ticket.EntryDateTime.ToString("dd/MM/yyyy"));
+            WriteText(ms, ticket.EntryDateTime.ToString("HH:mm:ss"));
+            WriteText(ms, "");
+
+            // Footer
+            Write(ms, CMD_CENTER);
+            WriteText(ms, "Guarde este ticket.");
+            WriteText(ms, "");
+            WriteText(ms, "");
+
+            // Cut
+            Write(ms, CMD_CUT);
+
+            var data = ms.ToArray();
+            var success = RawPrinterHelper.SendBytesToPrinter(_settings.WindowsPrinterName, data, "ParkEasy - Ticket Entrada");
+
+            if (!success)
+            {
+                _logger.LogWarning("Falha ao enviar dados para a impressora {PrinterName}", _settings.WindowsPrinterName);
+                throw new InvalidOperationException(
+                    $"Não foi possível imprimir o ticket.\nVerifique a impressora '{_settings.WindowsPrinterName}'.");
+            }
+
+            _logger.LogInformation("Ticket impresso com sucesso: {TicketNumber}", ticket.TicketNumber);
+        }
+        catch (InvalidOperationException)
+        {
+            throw; // Re-throw printer errors
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao imprimir ticket: {TicketNumber}", ticket.TicketNumber);
+            throw new InvalidOperationException(
+                $"Erro ao imprimir o ticket.\nVerifique a Bematech MP-4200 TH.\n\nDetalhes: {ex.Message}");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task PrintExitReceiptAsync(ParkingReceipt receipt)
+    {
+        _logger.LogInformation("Impressão de comprovante iniciada: {TicketNumber}", receipt.TicketNumber);
+
+        try
+        {
+            using var ms = new MemoryStream();
+
+            Write(ms, CMD_INIT);
+
+            // Header line
+            Write(ms, CMD_CENTER);
+            WriteText(ms, "--------------------------------");
+            Write(ms, CMD_BOLD_ON);
+            WriteText(ms, "ESTACIONAMENTO");
+            Write(ms, CMD_BOLD_OFF);
+            WriteText(ms, "--------------------------------");
+            WriteText(ms, "");
+
+            // Ticket
+            Write(ms, CMD_LEFT);
+            WriteText(ms, $"Ticket: {receipt.TicketNumber}");
+            WriteText(ms, "");
+            WriteText(ms, $"Placa: {receipt.Plate}");
+
+            if (!string.IsNullOrWhiteSpace(receipt.VehicleModel))
+                WriteText(ms, $"Modelo: {receipt.VehicleModel}");
+
+            if (!string.IsNullOrWhiteSpace(receipt.CustomerName))
+                WriteText(ms, $"Cliente: {receipt.CustomerName}");
+
+            WriteText(ms, "");
+            WriteText(ms, "Entrada:");
+            WriteText(ms, receipt.EntryDateTime.ToString("dd/MM/yyyy HH:mm"));
+            WriteText(ms, "");
+            WriteText(ms, "Saida:");
+            WriteText(ms, receipt.ExitDateTime.ToString("dd/MM/yyyy HH:mm"));
+            WriteText(ms, "");
+            WriteText(ms, "Tempo:");
+            WriteText(ms, $"{(int)receipt.Duration.TotalHours:D2}:{receipt.Duration.Minutes:D2}");
+            WriteText(ms, "");
+
+            // Amount
+            Write(ms, CMD_CENTER);
+            Write(ms, CMD_BOLD_ON);
+            WriteText(ms, "VALOR PAGO:");
+            Write(ms, CMD_DOUBLE_SIZE);
+            WriteText(ms, receipt.FinalAmount.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")));
+            Write(ms, CMD_NORMAL_SIZE);
+            Write(ms, CMD_BOLD_OFF);
+            WriteText(ms, "");
+
+            // Footer
+            WriteText(ms, "--------------------------------");
+            WriteText(ms, "OBRIGADO!");
+            WriteText(ms, "--------------------------------");
+            WriteText(ms, "");
+            WriteText(ms, "");
+
+            Write(ms, CMD_CUT);
+
+            var data = ms.ToArray();
+            var success = RawPrinterHelper.SendBytesToPrinter(_settings.WindowsPrinterName, data, "ParkEasy - Comprovante Saida");
+
+            if (!success)
+            {
+                _logger.LogWarning("Falha ao enviar comprovante para a impressora {PrinterName}", _settings.WindowsPrinterName);
+                throw new InvalidOperationException(
+                    $"Não foi possível imprimir o comprovante.\nVerifique a impressora '{_settings.WindowsPrinterName}'.");
+            }
+
+            _logger.LogInformation("Comprovante impresso com sucesso: {TicketNumber}", receipt.TicketNumber);
+        }
+        catch (InvalidOperationException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Erro ao imprimir comprovante: {TicketNumber}", receipt.TicketNumber);
+            throw new InvalidOperationException(
+                $"Erro ao imprimir o comprovante.\nVerifique a Bematech MP-4200 TH.\n\nDetalhes: {ex.Message}");
+        }
+
+        return Task.CompletedTask;
+    }
+
+    public Task TestPrinterAsync()
+    {
+        _logger.LogInformation("Teste de impressora iniciado: {PrinterName}", _settings.WindowsPrinterName);
+
+        using var ms = new MemoryStream();
+
+        Write(ms, CMD_INIT);
+
+        Write(ms, CMD_CENTER);
+        Write(ms, CMD_BOLD_ON);
+        Write(ms, CMD_DOUBLE_SIZE);
+        WriteText(ms, "TESTE");
+        Write(ms, CMD_NORMAL_SIZE);
+        Write(ms, CMD_BOLD_OFF);
+        WriteText(ms, "");
+        WriteText(ms, "ParkEasy");
+        WriteText(ms, "Impressora OK!");
+        WriteText(ms, "");
+        WriteText(ms, DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss"));
+        WriteText(ms, "");
+        WriteText(ms, "");
+
+        Write(ms, CMD_CUT);
+
+        var data = ms.ToArray();
+        var success = RawPrinterHelper.SendBytesToPrinter(_settings.WindowsPrinterName, data, "ParkEasy - Teste");
+
+        if (!success)
+        {
+            throw new InvalidOperationException(
+                $"Falha ao imprimir teste.\nVerifique se a impressora '{_settings.WindowsPrinterName}' está instalada e ligada.");
+        }
+
+        _logger.LogInformation("Teste de impressora concluído com sucesso.");
+        return Task.CompletedTask;
+    }
+
+    private void Write(MemoryStream ms, byte[] data)
+    {
+        ms.Write(data, 0, data.Length);
+    }
+
+    private void WriteText(MemoryStream ms, string text)
+    {
+        var bytes = _encoding.GetBytes(text);
+        ms.Write(bytes, 0, bytes.Length);
+        ms.Write(CMD_FEED, 0, CMD_FEED.Length);
+    }
+}

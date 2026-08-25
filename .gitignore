@@ -1,0 +1,20 @@
+## Ignore Visual Studio / .NET build artifacts
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.db
+*.log
+
+# User-specific files
+*.rsuser
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Packages
+*.nupkg
+packages/
+
+# Rider / JetBrains
+.idea/
