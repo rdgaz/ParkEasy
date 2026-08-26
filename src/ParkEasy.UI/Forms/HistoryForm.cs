@@ -87,13 +87,13 @@ public class HistoryForm : Form
         filterPanel.Controls.Add(_chkUseDateFilter);
 
         var lblStart = Theme.CreateLabel("De:", Theme.FontNormal, Theme.TextSecondary);
-        lblStart.Location = new Point(140, top);
+        lblStart.Location = new Point(154, top);
         filterPanel.Controls.Add(lblStart);
 
         _dtpStart = new DateTimePicker
         {
             Format = DateTimePickerFormat.Short,
-            Location = new Point(170, top - 2),
+            Location = new Point(189, top - 2),
             Size = new Size(120, 26),
             Value = DateTime.Today.AddDays(-7),
             Font = Theme.FontNormal
@@ -101,13 +101,13 @@ public class HistoryForm : Form
         filterPanel.Controls.Add(_dtpStart);
 
         var lblEnd = Theme.CreateLabel("Até:", Theme.FontNormal, Theme.TextSecondary);
-        lblEnd.Location = new Point(310, top);
+        lblEnd.Location = new Point(316, top);
         filterPanel.Controls.Add(lblEnd);
 
         _dtpEnd = new DateTimePicker
         {
             Format = DateTimePickerFormat.Short,
-            Location = new Point(345, top - 2),
+            Location = new Point(369, top - 2),
             Size = new Size(120, 26),
             Value = DateTime.Today,
             Font = Theme.FontNormal
@@ -122,7 +122,7 @@ public class HistoryForm : Form
         filterPanel.Controls.Add(lblPlate);
 
         _txtPlate = Theme.CreateInput(100);
-        _txtPlate.Location = new Point(60, top - 2);
+        _txtPlate.Location = new Point(70, top - 2);
         _txtPlate.CharacterCasing = CharacterCasing.Upper;
         filterPanel.Controls.Add(_txtPlate);
 
@@ -131,7 +131,7 @@ public class HistoryForm : Form
         filterPanel.Controls.Add(lblTicket);
 
         _txtTicket = Theme.CreateInput(100);
-        _txtTicket.Location = new Point(230, top - 2);
+        _txtTicket.Location = new Point(240, top - 2);
         filterPanel.Controls.Add(_txtTicket);
 
         var lblCust = Theme.CreateLabel("Cliente:", Theme.FontNormal, Theme.TextSecondary);
@@ -139,7 +139,7 @@ public class HistoryForm : Form
         filterPanel.Controls.Add(lblCust);
 
         _txtCustomer = Theme.CreateInput(150);
-        _txtCustomer.Location = new Point(405, top - 2);
+        _txtCustomer.Location = new Point(420, top - 2);
         filterPanel.Controls.Add(_txtCustomer);
 
         var btnFilter = Theme.CreatePrimaryButton("FILTRAR", 120);
