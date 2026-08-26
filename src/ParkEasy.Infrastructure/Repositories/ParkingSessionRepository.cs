@@ -53,6 +53,14 @@ public class ParkingSessionRepository : IParkingSessionRepository
             .FirstOrDefaultAsync(s => s.Plate == normalizedPlate && s.Status == ParkingSessionStatus.Active);
     }
 
+    public async Task<ParkingSession?> GetMostRecentByPlateAsync(string normalizedPlate)
+    {
+        return await _context.ParkingSessions
+            .Where(s => s.Plate == normalizedPlate)
+            .OrderByDescending(s => s.EntryDateTime)
+            .FirstOrDefaultAsync();
+    }
+
     public async Task<List<ParkingSession>> GetCompletedSessionsAsync(
         DateTime? startDate, DateTime? endDate,
         string? plate, string? ticketNumber, string? customerName,

@@ -12,12 +12,15 @@ public class EntryForm : Form
     private readonly ILogger<EntryForm> _logger;
 
     private TextBox _txtPlate = null!;
+    private Label _lblPlateHint = null!;
     private ComboBox _cmbVehicleType = null!;
     private TextBox _txtModel = null!;
     private TextBox _txtCustomer = null!;
     private TextBox _txtPhone = null!;
     private Button _btnSave = null!;
     private Button _btnCancel = null!;
+
+    private string? _lastLookedUpPlate;
 
     public EntryForm(
         IParkingService parkingService,
@@ -36,7 +39,7 @@ public class EntryForm : Form
         SuspendLayout();
 
         Text = "Registrar Entrada";
-        Size = new Size(460, 540);
+        Size = new Size(460, 556);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -73,7 +76,13 @@ public class EntryForm : Form
         _txtPlate.PlaceholderText = "ABC1D23";
         _txtPlate.TextChanged += TxtPlate_TextChanged;
         panel.Controls.Add(_txtPlate);
-        top += 48;
+        top += 40;
+
+        _lblPlateHint = Theme.CreateLabel(string.Empty, Theme.FontGrid, Theme.Success);
+        _lblPlateHint.Location = new Point(24, top);
+        _lblPlateHint.AutoSize = true;
+        panel.Controls.Add(_lblPlateHint);
+        top += 24;
 
         // Tipo de Veículo (Required)
         var lblVehicleType = Theme.CreateLabel("Tipo de Veículo (Obrigatório):", Theme.FontMedium);
@@ -154,12 +163,48 @@ public class EntryForm : Form
         ResumeLayout(false);
     }
 
-    private void TxtPlate_TextChanged(object? sender, EventArgs e)
+    private async void TxtPlate_TextChanged(object? sender, EventArgs e)
     {
-        // Auto format plate uppercase clean
-        var cursor = _txtPlate.SelectionStart;
-        var clean = PlateNormalizer.Normalize(_txtPlate.Text);
-        // keep text reasonably un-mangled while typing
+        var normalized = PlateNormalizer.Normalize(_txtPlate.Text);
+
+        if (normalized.Length != 7)
+        {
+            _lastLookedUpPlate = null;
+            _lblPlateHint.Text = string.Empty;
+            return;
+        }
+
+        if (!PlateNormalizer.IsValid(normalized) || normalized == _lastLookedUpPlate)
+            return;
+
+        await LookupPlateHistoryAsync(normalized);
+    }
+
+    private async Task LookupPlateHistoryAsync(string normalizedPlate)
+    {
+        _lastLookedUpPlate = normalizedPlate;
+
+        try
+        {
+            var previous = await _parkingService.FindMostRecentByPlateAsync(normalizedPlate);
+
+            if (previous is null)
+            {
+                _lblPlateHint.Text = string.Empty;
+                return;
+            }
+
+            _cmbVehicleType.SelectedIndex = (int)previous.VehicleType;
+            _txtModel.Text = previous.VehicleModel ?? string.Empty;
+            _txtCustomer.Text = previous.CustomerName ?? string.Empty;
+            _txtPhone.Text = previous.CustomerPhone ?? string.Empty;
+
+            _lblPlateHint.Text = "✓ Dados preenchidos a partir do cadastro anterior desta placa.";
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Erro ao buscar histórico da placa {Plate}", normalizedPlate);
+        }
     }
 
     private async void BtnSave_Click(object? sender, EventArgs e)

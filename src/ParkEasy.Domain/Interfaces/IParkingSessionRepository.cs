@@ -10,6 +10,7 @@ public interface IParkingSessionRepository
     Task<ParkingSession?> GetByIdAsync(long id);
     Task<ParkingSession?> GetByTicketNumberAsync(string ticketNumber);
     Task<ParkingSession?> GetActiveByPlateAsync(string normalizedPlate);
+    Task<ParkingSession?> GetMostRecentByPlateAsync(string normalizedPlate);
     Task<List<ParkingSession>> GetCompletedSessionsAsync(
         DateTime? startDate, DateTime? endDate,
         string? plate, string? ticketNumber, string? customerName,

@@ -210,4 +210,25 @@ public class ParkingServiceTests
         Assert.Equal(45.00m, totalRevenue);
         Assert.Equal(2, totalVehicles);
     }
+
+    [Fact]
+    public async Task FindMostRecentByPlateAsync_ValidPlate_NormalizesAndDelegatesToRepository()
+    {
+        var previousSession = new ParkingSession { Id = 30, Plate = "ABC1D23", CustomerName = "Maria" };
+        _repoMock.Setup(r => r.GetMostRecentByPlateAsync("ABC1D23")).ReturnsAsync(previousSession);
+
+        var result = await _parkingService.FindMostRecentByPlateAsync("abc-1d23");
+
+        Assert.Same(previousSession, result);
+        _repoMock.Verify(r => r.GetMostRecentByPlateAsync("ABC1D23"), Times.Once);
+    }
+
+    [Fact]
+    public async Task FindMostRecentByPlateAsync_InvalidPlateFormat_ReturnsNullWithoutQueryingRepository()
+    {
+        var result = await _parkingService.FindMostRecentByPlateAsync("INVALID");
+
+        Assert.Null(result);
+        _repoMock.Verify(r => r.GetMostRecentByPlateAsync(It.IsAny<string>()), Times.Never);
+    }
 }

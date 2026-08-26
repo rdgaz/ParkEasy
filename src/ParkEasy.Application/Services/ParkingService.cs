@@ -74,6 +74,16 @@ public class ParkingService : IParkingService
         return session;
     }
 
+    public async Task<ParkingSession?> FindMostRecentByPlateAsync(string plate)
+    {
+        var normalizedPlate = PlateNormalizer.Normalize(plate);
+
+        if (!PlateNormalizer.IsValid(normalizedPlate))
+            return null;
+
+        return await _repository.GetMostRecentByPlateAsync(normalizedPlate);
+    }
+
     public async Task<ParkingSession> FinalizeSessionAsync(long sessionId)
     {
         var session = await _repository.GetByIdAsync(sessionId);
