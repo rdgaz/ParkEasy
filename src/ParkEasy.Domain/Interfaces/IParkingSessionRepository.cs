@@ -1,4 +1,5 @@
 using ParkEasy.Domain.Entities;
+using ParkEasy.Domain.Enums;
 
 namespace ParkEasy.Domain.Interfaces;
 
@@ -11,10 +12,12 @@ public interface IParkingSessionRepository
     Task<ParkingSession?> GetActiveByPlateAsync(string normalizedPlate);
     Task<List<ParkingSession>> GetCompletedSessionsAsync(
         DateTime? startDate, DateTime? endDate,
-        string? plate, string? ticketNumber, string? customerName);
+        string? plate, string? ticketNumber, string? customerName,
+        VehicleType? vehicleType);
     Task AddAsync(ParkingSession session);
     Task UpdateAsync(ParkingSession session);
     Task<int> GetNextTicketSequenceAsync();
     Task<decimal> GetTodayRevenueAsync();
     Task<int> GetActiveCountAsync();
+    Task<int> GetOccupiedSpacesAsync();
 }

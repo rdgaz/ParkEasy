@@ -55,10 +55,14 @@ public class ParkingSessionRepository : IParkingSessionRepository
 
     public async Task<List<ParkingSession>> GetCompletedSessionsAsync(
         DateTime? startDate, DateTime? endDate,
-        string? plate, string? ticketNumber, string? customerName)
+        string? plate, string? ticketNumber, string? customerName,
+        VehicleType? vehicleType)
     {
         var query = _context.ParkingSessions
             .Where(s => s.Status == ParkingSessionStatus.Completed);
+
+        if (vehicleType.HasValue)
+            query = query.Where(s => s.VehicleType == vehicleType.Value);
 
         if (startDate.HasValue)
             query = query.Where(s => s.EntryDateTime >= startDate.Value.Date);
@@ -119,5 +123,12 @@ public class ParkingSessionRepository : IParkingSessionRepository
     {
         return await _context.ParkingSessions
             .CountAsync(s => s.Status == ParkingSessionStatus.Active);
+    }
+
+    public async Task<int> GetOccupiedSpacesAsync()
+    {
+        return await _context.ParkingSessions
+            .Where(s => s.Status == ParkingSessionStatus.Active)
+            .SumAsync(s => s.VehicleType == VehicleType.VagaDupla ? 2 : 1);
     }
 }

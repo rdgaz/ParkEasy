@@ -60,10 +60,20 @@ As configurações de negócio e de impressora ficam no arquivo `appsettings.jso
   },
 
   "Pricing": {
-    "FirstHour": 10.00,
-    "AdditionalHour": 5.00,
     "GracePeriodMinutes": 10,
-    "DailyMaximum": 50.00
+    "DailyMaximum": 50.00,
+    "Moto": {
+      "FirstHour": 5.00,
+      "AdditionalHour": 3.00
+    },
+    "Carro": {
+      "FirstHour": 10.00,
+      "AdditionalHour": 5.00
+    },
+    "VagaDupla": {
+      "FirstHour": 15.00,
+      "AdditionalHour": 8.00
+    }
   },
 
   "Printer": {
@@ -74,10 +84,9 @@ As configurações de negócio e de impressora ficam no arquivo `appsettings.jso
 ```
 
 ### Opções de Preço
-- `GracePeriodMinutes`: Período de tolerância em minutos (ex: 10 minutos = R$ 0,00).
-- `FirstHour`: Valor cobrado até a primeira hora após a tolerância.
-- `AdditionalHour`: Valor cobrado por hora (ou fração de hora) adicional.
-- `DailyMaximum`: Teto máximo diário de cobrança.
+- `GracePeriodMinutes`: Período de tolerância em minutos (ex: 10 minutos = R$ 0,00), válido para todos os tipos de veículo.
+- `DailyMaximum`: Teto máximo diário de cobrança, válido para todos os tipos de veículo.
+- `Moto` / `Carro` / `VagaDupla`: cada tipo de veículo tem seu próprio `FirstHour` (valor cobrado até a primeira hora após a tolerância) e `AdditionalHour` (valor cobrado por hora, ou fração de hora, adicional). `VagaDupla` representa veículos que ocupam duas vagas físicas (ex: caminhonetes, vans) e conta como 2 vagas no painel de ocupação.
 
 ---
 

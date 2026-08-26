@@ -32,6 +32,9 @@ public class ParkingDbContext : DbContext
                 .IsRequired()
                 .HasMaxLength(10);
 
+            entity.Property(e => e.VehicleType)
+                .IsRequired();
+
             entity.Property(e => e.VehicleModel)
                 .HasMaxLength(100);
 

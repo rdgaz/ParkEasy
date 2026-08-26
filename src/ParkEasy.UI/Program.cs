@@ -29,6 +29,7 @@ internal static class Program
         {
             var db = scope.ServiceProvider.GetRequiredService<ParkingDbContext>();
             db.Database.EnsureCreated();
+            EnsureVehicleTypeColumn(db);
         }
 
         var mainForm = services.GetRequiredService<MainForm>();
@@ -87,5 +88,24 @@ internal static class Program
         services.AddTransient<HistoryForm>();
 
         return services.BuildServiceProvider();
+    }
+
+    /// <summary>
+    /// Lightweight schema upgrade for pre-existing SQLite databases created before
+    /// the VehicleType column existed. EnsureCreated() only creates new databases,
+    /// so older files need this column added manually.
+    /// </summary>
+    private static void EnsureVehicleTypeColumn(ParkingDbContext db)
+    {
+        var hasColumn = db.Database
+            .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('ParkingSessions') WHERE name = 'VehicleType'")
+            .AsEnumerable()
+            .Any();
+
+        if (!hasColumn)
+        {
+            db.Database.ExecuteSqlRaw(
+                "ALTER TABLE ParkingSessions ADD COLUMN VehicleType INTEGER NOT NULL DEFAULT 1");
+        }
     }
 }

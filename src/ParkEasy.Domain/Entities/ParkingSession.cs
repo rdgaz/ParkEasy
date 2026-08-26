@@ -10,6 +10,8 @@ public class ParkingSession
 
     public string Plate { get; set; } = string.Empty;
 
+    public VehicleType VehicleType { get; set; }
+
     public string? VehicleModel { get; set; }
 
     public string? CustomerName { get; set; }

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Options;
 using ParkEasy.Application.Configuration;
 using ParkEasy.Application.Interfaces;
+using ParkEasy.Domain.Enums;
 
 namespace ParkEasy.Application.Services;
 
@@ -13,11 +14,12 @@ public class ParkingFeeCalculator : IParkingFeeCalculator
         _pricing = pricingOptions.Value;
     }
 
-    public decimal CalculateFee(DateTime entryDateTime, DateTime exitDateTime)
+    public decimal CalculateFee(DateTime entryDateTime, DateTime exitDateTime, VehicleType vehicleType)
     {
         if (exitDateTime <= entryDateTime)
             return 0m;
 
+        var pricing = GetPricingFor(vehicleType);
         var totalMinutes = (exitDateTime - entryDateTime).TotalMinutes;
 
         // Grace period — free
@@ -25,7 +27,7 @@ public class ParkingFeeCalculator : IParkingFeeCalculator
             return 0m;
 
         // First hour
-        decimal fee = _pricing.FirstHour;
+        decimal fee = pricing.FirstHour;
 
         if (totalMinutes <= 60)
             return Math.Min(fee, _pricing.DailyMaximum);
@@ -33,14 +35,22 @@ public class ParkingFeeCalculator : IParkingFeeCalculator
         // Additional hours (each started hour counts as full)
         var minutesBeyondFirstHour = totalMinutes - 60;
         var additionalHours = (int)Math.Ceiling(minutesBeyondFirstHour / 60.0);
-        fee += additionalHours * _pricing.AdditionalHour;
+        fee += additionalHours * pricing.AdditionalHour;
 
         // Daily maximum cap
         return Math.Min(fee, _pricing.DailyMaximum);
     }
 
-    public decimal CalculateCurrentFee(DateTime entryDateTime)
+    public decimal CalculateCurrentFee(DateTime entryDateTime, VehicleType vehicleType)
     {
-        return CalculateFee(entryDateTime, DateTime.Now);
+        return CalculateFee(entryDateTime, DateTime.Now, vehicleType);
     }
+
+    private VehicleTypePricing GetPricingFor(VehicleType vehicleType) => vehicleType switch
+    {
+        VehicleType.Moto => _pricing.Moto,
+        VehicleType.Carro => _pricing.Carro,
+        VehicleType.VagaDupla => _pricing.VagaDupla,
+        _ => throw new ArgumentOutOfRangeException(nameof(vehicleType), vehicleType, "Tipo de veículo desconhecido.")
+    };
 }

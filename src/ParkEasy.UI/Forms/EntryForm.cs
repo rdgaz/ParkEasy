@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using ParkEasy.Application.Interfaces;
 using ParkEasy.Application.Services;
+using ParkEasy.Domain.Enums;
 
 namespace ParkEasy.UI.Forms;
 
@@ -11,6 +12,7 @@ public class EntryForm : Form
     private readonly ILogger<EntryForm> _logger;
 
     private TextBox _txtPlate = null!;
+    private ComboBox _cmbVehicleType = null!;
     private TextBox _txtModel = null!;
     private TextBox _txtCustomer = null!;
     private TextBox _txtPhone = null!;
@@ -34,7 +36,7 @@ public class EntryForm : Form
         SuspendLayout();
 
         Text = "Registrar Entrada";
-        Size = new Size(460, 480);
+        Size = new Size(460, 540);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -72,6 +74,29 @@ public class EntryForm : Form
         _txtPlate.TextChanged += TxtPlate_TextChanged;
         panel.Controls.Add(_txtPlate);
         top += 48;
+
+        // Tipo de Veículo (Required)
+        var lblVehicleType = Theme.CreateLabel("Tipo de Veículo (Obrigatório):", Theme.FontMedium);
+        lblVehicleType.Location = new Point(24, top);
+        panel.Controls.Add(lblVehicleType);
+        top += 24;
+
+        _cmbVehicleType = new ComboBox
+        {
+            Location = new Point(24, top),
+            Size = new Size(390, Theme.InputHeight),
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = Theme.SurfaceLight,
+            ForeColor = Theme.TextPrimary,
+            Font = Theme.FontNormal,
+            FlatStyle = FlatStyle.Flat
+        };
+        _cmbVehicleType.Items.Add("Moto");
+        _cmbVehicleType.Items.Add("Carro");
+        _cmbVehicleType.Items.Add("Vaga Dupla");
+        _cmbVehicleType.SelectedIndex = (int)VehicleType.Carro;
+        panel.Controls.Add(_cmbVehicleType);
+        top += 44;
 
         // Modelo (Optional)
         var lblModel = Theme.CreateLabel("Modelo do veículo (Opcional):", Theme.FontMedium);
@@ -160,9 +185,12 @@ public class EntryForm : Form
 
         try
         {
+            var vehicleType = (VehicleType)_cmbVehicleType.SelectedIndex;
+
             // 1. Save entry to database first
             var session = await _parkingService.RegisterEntryAsync(
                 normalizedPlate,
+                vehicleType,
                 _txtModel.Text,
                 _txtCustomer.Text,
                 _txtPhone.Text

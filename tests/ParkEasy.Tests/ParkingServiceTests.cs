@@ -35,11 +35,12 @@ public class ParkingServiceTests
         _repoMock.Setup(r => r.GetActiveByPlateAsync("ABC1D23")).ReturnsAsync((ParkingSession?)null);
         _repoMock.Setup(r => r.GetNextTicketSequenceAsync()).ReturnsAsync(1);
 
-        var session = await _parkingService.RegisterEntryAsync("abc-1d23", "Corolla", "João", "53999999999");
+        var session = await _parkingService.RegisterEntryAsync("abc-1d23", VehicleType.Carro, "Corolla", "João", "53999999999");
 
         Assert.NotNull(session);
         Assert.Equal("000001", session.TicketNumber);
         Assert.Equal("ABC1D23", session.Plate);
+        Assert.Equal(VehicleType.Carro, session.VehicleType);
         Assert.Equal("Corolla", session.VehicleModel);
         Assert.Equal("João", session.CustomerName);
         Assert.Equal(ParkingSessionStatus.Active, session.Status);
@@ -61,14 +62,14 @@ public class ParkingServiceTests
         _repoMock.Setup(r => r.GetActiveByPlateAsync("ABC1D23")).ReturnsAsync(existingSession);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _parkingService.RegisterEntryAsync("ABC1D23", null, null, null));
+            _parkingService.RegisterEntryAsync("ABC1D23", VehicleType.Carro, null, null, null));
     }
 
     [Fact]
     public async Task RegisterEntryAsync_InvalidPlateFormat_ThrowsArgumentException()
     {
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            _parkingService.RegisterEntryAsync("INVALID_PLATE", null, null, null));
+            _parkingService.RegisterEntryAsync("INVALID_PLATE", VehicleType.Carro, null, null, null));
     }
 
     [Fact]

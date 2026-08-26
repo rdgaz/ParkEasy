@@ -4,6 +4,7 @@ using Microsoft.Extensions.Options;
 using ParkEasy.Application.Configuration;
 using ParkEasy.Application.DTOs;
 using ParkEasy.Application.Interfaces;
+using ParkEasy.Domain.Enums;
 
 namespace ParkEasy.Infrastructure.Printing;
 
@@ -73,6 +74,11 @@ public class BematechMp4200PrinterService : IPrinterService
             WriteText(ms, ticket.Plate);
             Write(ms, CMD_NORMAL_SIZE);
             Write(ms, CMD_BOLD_OFF);
+            WriteText(ms, "");
+
+            // Vehicle type
+            WriteText(ms, "TIPO:");
+            WriteText(ms, ticket.VehicleType.ToDisplayName());
             WriteText(ms, "");
 
             // Model (optional)
@@ -156,6 +162,7 @@ public class BematechMp4200PrinterService : IPrinterService
             WriteText(ms, $"Ticket: {receipt.TicketNumber}");
             WriteText(ms, "");
             WriteText(ms, $"Placa: {receipt.Plate}");
+            WriteText(ms, $"Tipo: {receipt.VehicleType.ToDisplayName()}");
 
             if (!string.IsNullOrWhiteSpace(receipt.VehicleModel))
                 WriteText(ms, $"Modelo: {receipt.VehicleModel}");

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using ParkEasy.Application.DTOs;
 using ParkEasy.Application.Interfaces;
 using ParkEasy.Domain.Entities;
+using ParkEasy.Domain.Enums;
 
 namespace ParkEasy.UI.Forms;
 
@@ -18,6 +19,7 @@ public class HistoryForm : Form
     private TextBox _txtPlate = null!;
     private TextBox _txtTicket = null!;
     private TextBox _txtCustomer = null!;
+    private ComboBox _cmbVehicleType = null!;
     private DataGridView _grid = null!;
     private Label _lblTotalVehicles = null!;
     private Label _lblTotalRevenue = null!;
@@ -62,7 +64,7 @@ public class HistoryForm : Form
         var filterPanel = new Panel
         {
             Dock = DockStyle.Top,
-            Height = 110,
+            Height = 150,
             BackColor = Theme.Surface,
             Padding = new Padding(16)
         };
@@ -142,6 +144,30 @@ public class HistoryForm : Form
         _txtCustomer.Location = new Point(420, top - 2);
         filterPanel.Controls.Add(_txtCustomer);
 
+        top += 38;
+
+        // Vehicle type filter row
+        var lblType = Theme.CreateLabel("Tipo:", Theme.FontNormal, Theme.TextSecondary);
+        lblType.Location = new Point(16, top);
+        filterPanel.Controls.Add(lblType);
+
+        _cmbVehicleType = new ComboBox
+        {
+            Location = new Point(70, top - 2),
+            Size = new Size(140, Theme.InputHeight),
+            DropDownStyle = ComboBoxStyle.DropDownList,
+            BackColor = Theme.SurfaceLight,
+            ForeColor = Theme.TextPrimary,
+            Font = Theme.FontNormal,
+            FlatStyle = FlatStyle.Flat
+        };
+        _cmbVehicleType.Items.Add("Todos");
+        _cmbVehicleType.Items.Add("Moto");
+        _cmbVehicleType.Items.Add("Carro");
+        _cmbVehicleType.Items.Add("Vaga Dupla");
+        _cmbVehicleType.SelectedIndex = 0;
+        filterPanel.Controls.Add(_cmbVehicleType);
+
         var btnFilter = Theme.CreatePrimaryButton("FILTRAR", 120);
         btnFilter.Location = new Point(580, top - 6);
         btnFilter.Height = 36;
@@ -157,6 +183,7 @@ public class HistoryForm : Form
             _txtPlate.Clear();
             _txtTicket.Clear();
             _txtCustomer.Clear();
+            _cmbVehicleType.SelectedIndex = 0;
             await LoadHistoryAsync();
         };
         filterPanel.Controls.Add(btnClear);
@@ -223,6 +250,7 @@ public class HistoryForm : Form
         _grid.Columns.Clear();
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Ticket", HeaderText = "Ticket", Width = 90 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Placa", HeaderText = "Placa", Width = 100 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Tipo", HeaderText = "Tipo", Width = 90 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Modelo", HeaderText = "Modelo", Width = 120 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Cliente", HeaderText = "Cliente", Width = 130 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Telefone", HeaderText = "Telefone", Width = 120 });
@@ -249,7 +277,8 @@ public class HistoryForm : Form
                 EndDate = _chkUseDateFilter.Checked ? _dtpEnd.Value.Date : null,
                 Plate = string.IsNullOrWhiteSpace(_txtPlate.Text) ? null : _txtPlate.Text.Trim(),
                 TicketNumber = string.IsNullOrWhiteSpace(_txtTicket.Text) ? null : _txtTicket.Text.Trim(),
-                CustomerName = string.IsNullOrWhiteSpace(_txtCustomer.Text) ? null : _txtCustomer.Text.Trim()
+                CustomerName = string.IsNullOrWhiteSpace(_txtCustomer.Text) ? null : _txtCustomer.Text.Trim(),
+                VehicleType = _cmbVehicleType.SelectedIndex > 0 ? (VehicleType)(_cmbVehicleType.SelectedIndex - 1) : null
             };
 
             using var scope = _serviceProvider.CreateScope();
@@ -285,6 +314,7 @@ public class HistoryForm : Form
             _grid.Rows.Add(
                 session.TicketNumber,
                 session.Plate,
+                session.VehicleType.ToDisplayName(),
                 session.VehicleModel ?? "—",
                 session.CustomerName ?? "—",
                 session.CustomerPhone ?? "—",

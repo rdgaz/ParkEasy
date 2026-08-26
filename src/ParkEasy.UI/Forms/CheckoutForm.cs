@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using ParkEasy.Application.Interfaces;
 using ParkEasy.Domain.Entities;
+using ParkEasy.Domain.Enums;
 
 namespace ParkEasy.UI.Forms;
 
@@ -18,6 +19,7 @@ public class CheckoutForm : Form
     private ParkingSession? _session;
     private Label _lblTicket = null!;
     private Label _lblPlate = null!;
+    private Label _lblVehicleType = null!;
     private Label _lblModel = null!;
     private Label _lblCustomer = null!;
     private Label _lblEntry = null!;
@@ -44,7 +46,7 @@ public class CheckoutForm : Form
         SuspendLayout();
 
         Text = "Finalizar Estacionamento";
-        Size = new Size(460, 560);
+        Size = new Size(460, 590);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -71,7 +73,7 @@ public class CheckoutForm : Form
         var card = new Panel
         {
             Location = new Point(24, top),
-            Size = new Size(390, 260),
+            Size = new Size(390, 288),
             BackColor = Theme.Surface,
             Padding = new Padding(16)
         };
@@ -96,6 +98,17 @@ public class CheckoutForm : Form
         card.Controls.Add(_lblPlate);
 
         cardTop += 34;
+
+        // Vehicle type
+        var lblTypeHead = Theme.CreateLabel("Tipo:", Theme.FontNormal, Theme.TextSecondary);
+        lblTypeHead.Location = new Point(16, cardTop);
+        card.Controls.Add(lblTypeHead);
+
+        _lblVehicleType = Theme.CreateLabel("—", Theme.FontMedium, Theme.TextPrimary);
+        _lblVehicleType.Location = new Point(80, cardTop);
+        card.Controls.Add(_lblVehicleType);
+
+        cardTop += 28;
 
         // Model & Customer
         var lblModelHead = Theme.CreateLabel("Modelo:", Theme.FontNormal, Theme.TextSecondary);
@@ -158,7 +171,7 @@ public class CheckoutForm : Form
         card.Controls.Add(_lblDuration);
 
         panel.Controls.Add(card);
-        top += 280;
+        top += 308;
 
         // Amount Box
         var amountPanel = new Panel
@@ -226,11 +239,12 @@ public class CheckoutForm : Form
 
             var now = DateTime.Now;
             var elapsed = now - _session.EntryDateTime;
-            var fee = _feeCalculator.CalculateFee(_session.EntryDateTime, now);
+            var fee = _feeCalculator.CalculateFee(_session.EntryDateTime, now, _session.VehicleType);
             var brCulture = CultureInfo.GetCultureInfo("pt-BR");
 
             _lblTicket.Text = _session.TicketNumber;
             _lblPlate.Text = _session.Plate;
+            _lblVehicleType.Text = _session.VehicleType.ToDisplayName();
             _lblModel.Text = _session.VehicleModel ?? "—";
             _lblCustomer.Text = !string.IsNullOrWhiteSpace(_session.CustomerPhone)
                 ? $"{_session.CustomerName ?? "—"} ({_session.CustomerPhone})"

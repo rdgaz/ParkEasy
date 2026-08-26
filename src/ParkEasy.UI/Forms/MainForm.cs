@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using ParkEasy.Application.DTOs;
 using ParkEasy.Application.Interfaces;
 using ParkEasy.Domain.Entities;
+using ParkEasy.Domain.Enums;
 
 namespace ParkEasy.UI.Forms;
 
@@ -309,6 +310,7 @@ public class MainForm : Form
         _gridActive.Columns.Clear();
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Ticket", HeaderText = "Ticket", MinimumWidth = 90, FillWeight = 90 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Placa", HeaderText = "Placa", MinimumWidth = 100, FillWeight = 100 });
+        _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Tipo", HeaderText = "Tipo", MinimumWidth = 100, FillWeight = 100 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Modelo", HeaderText = "Modelo", MinimumWidth = 140, FillWeight = 140 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Cliente", HeaderText = "Cliente", MinimumWidth = 150, FillWeight = 150 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Telefone", HeaderText = "Telefone", MinimumWidth = 130, FillWeight = 130 });
@@ -333,8 +335,8 @@ public class MainForm : Form
 
             // Load Dashboard metrics
             var dashData = await service.GetDashboardDataAsync();
-            _lblOccupiedSpaces.Text = $"{dashData.ActiveVehicles} / {dashData.TotalSpaces}";
-            _lblAvailableSpaces.Text = Math.Max(0, dashData.TotalSpaces - dashData.ActiveVehicles).ToString();
+            _lblOccupiedSpaces.Text = $"{dashData.OccupiedSpaces} / {dashData.TotalSpaces}";
+            _lblAvailableSpaces.Text = Math.Max(0, dashData.TotalSpaces - dashData.OccupiedSpaces).ToString();
 
             var brCulture = CultureInfo.GetCultureInfo("pt-BR");
             _lblTodayRevenue.Text = dashData.TodayRevenue.ToString("C2", brCulture);
@@ -393,11 +395,12 @@ public class MainForm : Form
         foreach (var session in _activeSessions)
         {
             var elapsed = now - session.EntryDateTime;
-            var fee = _feeCalculator.CalculateFee(session.EntryDateTime, now);
+            var fee = _feeCalculator.CalculateFee(session.EntryDateTime, now, session.VehicleType);
 
             _gridActive.Rows.Add(
                 session.TicketNumber,
                 session.Plate,
+                session.VehicleType.ToDisplayName(),
                 session.VehicleModel ?? "—",
                 session.CustomerName ?? "—",
                 session.CustomerPhone ?? "—",

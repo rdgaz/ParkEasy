@@ -29,7 +29,7 @@ public class ParkingService : IParkingService
     }
 
     public async Task<ParkingSession> RegisterEntryAsync(
-        string plate, string? vehicleModel, string? customerName, string? customerPhone)
+        string plate, VehicleType vehicleType, string? vehicleModel, string? customerName, string? customerPhone)
     {
         var normalizedPlate = PlateNormalizer.Normalize(plate);
 
@@ -53,6 +53,7 @@ public class ParkingService : IParkingService
         {
             TicketNumber = ticketNumber,
             Plate = normalizedPlate,
+            VehicleType = vehicleType,
             VehicleModel = string.IsNullOrWhiteSpace(vehicleModel) ? null : vehicleModel.Trim(),
             CustomerName = string.IsNullOrWhiteSpace(customerName) ? null : customerName.Trim(),
             CustomerPhone = string.IsNullOrWhiteSpace(customerPhone) ? null : customerPhone.Trim(),
@@ -84,7 +85,7 @@ public class ParkingService : IParkingService
             throw new InvalidOperationException("Esta sessão já foi finalizada.");
 
         var exitDateTime = DateTime.Now;
-        var finalAmount = _feeCalculator.CalculateFee(session.EntryDateTime, exitDateTime);
+        var finalAmount = _feeCalculator.CalculateFee(session.EntryDateTime, exitDateTime, session.VehicleType);
 
         session.ExitDateTime = exitDateTime;
         session.FinalAmount = finalAmount;
@@ -118,17 +119,20 @@ public class ParkingService : IParkingService
     {
         return await _repository.GetCompletedSessionsAsync(
             filter.StartDate, filter.EndDate,
-            filter.Plate, filter.TicketNumber, filter.CustomerName);
+            filter.Plate, filter.TicketNumber, filter.CustomerName,
+            filter.VehicleType);
     }
 
     public async Task<DashboardData> GetDashboardDataAsync()
     {
         var activeCount = await _repository.GetActiveCountAsync();
+        var occupiedSpaces = await _repository.GetOccupiedSpacesAsync();
         var todayRevenue = await _repository.GetTodayRevenueAsync();
 
         return new DashboardData
         {
             ActiveVehicles = activeCount,
+            OccupiedSpaces = occupiedSpaces,
             TotalSpaces = _parkingSettings.TotalSpaces,
             TodayRevenue = todayRevenue
         };
@@ -148,6 +152,7 @@ public class ParkingService : IParkingService
         {
             TicketNumber = session.TicketNumber,
             Plate = session.Plate,
+            VehicleType = session.VehicleType,
             VehicleModel = session.VehicleModel,
             CustomerName = session.CustomerName,
             EntryDateTime = session.EntryDateTime
@@ -164,6 +169,7 @@ public class ParkingService : IParkingService
         {
             TicketNumber = session.TicketNumber,
             Plate = session.Plate,
+            VehicleType = session.VehicleType,
             VehicleModel = session.VehicleModel,
             CustomerName = session.CustomerName,
             EntryDateTime = session.EntryDateTime,
