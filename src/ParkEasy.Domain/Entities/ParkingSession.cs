@@ -26,7 +26,7 @@ public class ParkingSession
 
     public decimal? FinalAmount { get; set; }
 
-    public WashType? WashType { get; set; }
+    public string? WashTypeName { get; set; }
 
     public decimal? WashAmount { get; set; }
 

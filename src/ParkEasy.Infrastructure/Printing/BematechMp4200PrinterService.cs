@@ -183,9 +183,9 @@ public class BematechMp4200PrinterService : IPrinterService
             WriteText(ms, $"Estacionamento: {receipt.FinalAmount.ToString("C2", brCulture)}");
 
             // Wash service (optional)
-            if (receipt.WashAmount.HasValue && receipt.WashType.HasValue)
+            if (receipt.WashAmount.HasValue && !string.IsNullOrWhiteSpace(receipt.WashTypeName))
             {
-                WriteText(ms, $"Lavagem ({receipt.WashType.Value.ToDisplayName()}): {receipt.WashAmount.Value.ToString("C2", brCulture)}");
+                WriteText(ms, $"Lavagem ({receipt.WashTypeName}): {receipt.WashAmount.Value.ToString("C2", brCulture)}");
 
                 if (!string.IsNullOrWhiteSpace(receipt.WashNotes))
                     WriteText(ms, $"Obs: {receipt.WashNotes}");

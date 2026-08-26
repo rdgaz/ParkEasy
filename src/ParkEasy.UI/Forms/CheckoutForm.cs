@@ -267,8 +267,8 @@ public class CheckoutForm : Form
             _lblDuration.Text = $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
 
             var washAmount = _session.WashAmount ?? 0;
-            _lblWash.Text = _session.WashType.HasValue
-                ? $"{_session.WashType.Value.ToDisplayName()} — {washAmount.ToString("C2", brCulture)}"
+            _lblWash.Text = !string.IsNullOrWhiteSpace(_session.WashTypeName)
+                ? $"{_session.WashTypeName} — {washAmount.ToString("C2", brCulture)}"
                 : "—";
 
             _lblAmount.Text = (fee + washAmount).ToString("C2", brCulture);

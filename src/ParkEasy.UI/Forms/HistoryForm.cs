@@ -319,7 +319,7 @@ public class HistoryForm : Form
                 session.VehicleModel ?? "—",
                 session.CustomerName ?? "—",
                 session.CustomerPhone ?? "—",
-                session.WashType?.ToDisplayName() ?? "—",
+                session.WashTypeName ?? "—",
                 session.EntryDateTime.ToString("dd/MM/yyyy HH:mm"),
                 session.ExitDateTime?.ToString("dd/MM/yyyy HH:mm") ?? "—",
                 $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}",

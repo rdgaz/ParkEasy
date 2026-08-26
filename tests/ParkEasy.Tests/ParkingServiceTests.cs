@@ -128,9 +128,9 @@ public class ParkingServiceTests
 
         _repoMock.Setup(r => r.GetByIdAsync(20)).ReturnsAsync(activeSession);
 
-        var result = await _parkingService.AddOrUpdateWashServiceAsync(20, WashType.Completa, 35.00m, "Cliente pediu cera");
+        var result = await _parkingService.AddOrUpdateWashServiceAsync(20, "Lav. Completa", 35.00m, "Cliente pediu cera");
 
-        Assert.Equal(WashType.Completa, result.WashType);
+        Assert.Equal("Lav. Completa", result.WashTypeName);
         Assert.Equal(35.00m, result.WashAmount);
         Assert.Equal("Cliente pediu cera", result.WashNotes);
 
@@ -144,7 +144,7 @@ public class ParkingServiceTests
         _repoMock.Setup(r => r.GetByIdAsync(21)).ReturnsAsync(activeSession);
 
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            _parkingService.AddOrUpdateWashServiceAsync(21, WashType.Expressa, 0m, null));
+            _parkingService.AddOrUpdateWashServiceAsync(21, "Ducha Simples", 0m, null));
     }
 
     [Fact]
@@ -154,7 +154,17 @@ public class ParkingServiceTests
         _repoMock.Setup(r => r.GetByIdAsync(22)).ReturnsAsync(completedSession);
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            _parkingService.AddOrUpdateWashServiceAsync(22, WashType.Expressa, 15.00m, null));
+            _parkingService.AddOrUpdateWashServiceAsync(22, "Ducha Simples", 15.00m, null));
+    }
+
+    [Fact]
+    public async Task AddOrUpdateWashServiceAsync_BlankTypeName_ThrowsArgumentException()
+    {
+        var activeSession = new ParkingSession { Id = 24, Status = ParkingSessionStatus.Active };
+        _repoMock.Setup(r => r.GetByIdAsync(24)).ReturnsAsync(activeSession);
+
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            _parkingService.AddOrUpdateWashServiceAsync(24, "   ", 15.00m, null));
     }
 
     [Fact]
@@ -164,7 +174,7 @@ public class ParkingServiceTests
         {
             Id = 23,
             Status = ParkingSessionStatus.Active,
-            WashType = WashType.Interna,
+            WashTypeName = "Lav. Detalhada",
             WashAmount = 20.00m,
             WashNotes = "Aspirar bem"
         };
@@ -173,7 +183,7 @@ public class ParkingServiceTests
 
         var result = await _parkingService.RemoveWashServiceAsync(23);
 
-        Assert.Null(result.WashType);
+        Assert.Null(result.WashTypeName);
         Assert.Null(result.WashAmount);
         Assert.Null(result.WashNotes);
 

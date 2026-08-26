@@ -416,7 +416,7 @@ public class MainForm : Form
                 session.VehicleModel ?? "—",
                 session.CustomerName ?? "—",
                 session.CustomerPhone ?? "—",
-                session.WashType?.ToDisplayName() ?? "—",
+                session.WashTypeName ?? "—",
                 session.EntryDateTime.ToString("dd/MM/yyyy HH:mm"),
                 $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}",
                 fee.ToString("C2", brCulture),

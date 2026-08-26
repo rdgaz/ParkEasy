@@ -1,10 +1,10 @@
 namespace ParkEasy.Application.Configuration;
 
-public class WashPricingSettings
+/// <summary>
+/// Tipos de lavagem e seus valores sugeridos, definidos livremente em appsettings.json
+/// (seção "WashPricing") — sem lista fixa no código, o operador cadastra os nomes que quiser.
+/// </summary>
+public class WashPricingSettings : Dictionary<string, decimal>
 {
     public const string SectionName = "WashPricing";
-
-    public decimal Expressa { get; set; } = 15.00m;
-    public decimal Completa { get; set; } = 35.00m;
-    public decimal Interna { get; set; } = 20.00m;
 }

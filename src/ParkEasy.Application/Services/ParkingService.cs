@@ -102,7 +102,7 @@ public class ParkingService : IParkingService
         return session;
     }
 
-    public async Task<ParkingSession> AddOrUpdateWashServiceAsync(long sessionId, WashType washType, decimal amount, string? notes)
+    public async Task<ParkingSession> AddOrUpdateWashServiceAsync(long sessionId, string washTypeName, decimal amount, string? notes)
     {
         var session = await _repository.GetByIdAsync(sessionId);
 
@@ -112,10 +112,13 @@ public class ParkingService : IParkingService
         if (session.Status != ParkingSessionStatus.Active)
             throw new InvalidOperationException("Não é possível adicionar lavagem a uma sessão já finalizada.");
 
+        if (string.IsNullOrWhiteSpace(washTypeName))
+            throw new ArgumentException("Informe o tipo de lavagem.");
+
         if (amount <= 0)
             throw new ArgumentException("Informe um valor de lavagem maior que zero.");
 
-        session.WashType = washType;
+        session.WashTypeName = washTypeName.Trim();
         session.WashAmount = amount;
         session.WashNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
         session.UpdatedAt = DateTime.Now;
@@ -123,8 +126,8 @@ public class ParkingService : IParkingService
         await _repository.UpdateAsync(session);
 
         _logger.LogInformation(
-            "Lavagem registrada: Ticket={TicketNumber}, Tipo={WashType}, Valor={WashAmount:C}",
-            session.TicketNumber, session.WashType, session.WashAmount);
+            "Lavagem registrada: Ticket={TicketNumber}, Tipo={WashTypeName}, Valor={WashAmount:C}",
+            session.TicketNumber, session.WashTypeName, session.WashAmount);
 
         return session;
     }
@@ -139,7 +142,7 @@ public class ParkingService : IParkingService
         if (session.Status != ParkingSessionStatus.Active)
             throw new InvalidOperationException("Não é possível remover lavagem de uma sessão já finalizada.");
 
-        session.WashType = null;
+        session.WashTypeName = null;
         session.WashAmount = null;
         session.WashNotes = null;
         session.UpdatedAt = DateTime.Now;
@@ -223,7 +226,7 @@ public class ParkingService : IParkingService
             ExitDateTime = session.ExitDateTime.Value,
             Duration = session.ExitDateTime.Value - session.EntryDateTime,
             FinalAmount = session.FinalAmount.Value,
-            WashType = session.WashType,
+            WashTypeName = session.WashTypeName,
             WashAmount = session.WashAmount,
             WashNotes = session.WashNotes,
             TotalAmount = session.FinalAmount.Value + (session.WashAmount ?? 0)

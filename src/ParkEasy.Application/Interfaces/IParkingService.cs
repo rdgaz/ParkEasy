@@ -8,7 +8,7 @@ public interface IParkingService
 {
     Task<ParkingSession> RegisterEntryAsync(string plate, VehicleType vehicleType, string? vehicleModel, string? customerName, string? customerPhone);
     Task<ParkingSession> FinalizeSessionAsync(long sessionId);
-    Task<ParkingSession> AddOrUpdateWashServiceAsync(long sessionId, WashType washType, decimal amount, string? notes);
+    Task<ParkingSession> AddOrUpdateWashServiceAsync(long sessionId, string washTypeName, decimal amount, string? notes);
     Task<ParkingSession> RemoveWashServiceAsync(long sessionId);
     Task<List<ParkingSession>> GetActiveSessionsAsync();
     Task<List<ParkingSession>> SearchActiveSessionsAsync(string searchTerm);

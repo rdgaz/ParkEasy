@@ -30,7 +30,7 @@ internal static class Program
             var db = scope.ServiceProvider.GetRequiredService<ParkingDbContext>();
             db.Database.EnsureCreated();
             EnsureColumnExists(db, "VehicleType", "INTEGER NOT NULL DEFAULT 1");
-            EnsureColumnExists(db, "WashType", "INTEGER NULL");
+            EnsureColumnExists(db, "WashTypeName", "TEXT NULL");
             EnsureColumnExists(db, "WashAmount", "REAL NULL");
             EnsureColumnExists(db, "WashNotes", "TEXT NULL");
         }

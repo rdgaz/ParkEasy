@@ -77,9 +77,9 @@ As configurações de negócio e de impressora ficam no arquivo `appsettings.jso
   },
 
   "WashPricing": {
-    "Expressa": 15.00,
-    "Completa": 35.00,
-    "Interna": 20.00
+    "Ducha Simples": 15.00,
+    "Lav. Completa": 35.00,
+    "Lav. Detalhada": 35.00
   },
 
   "Printer": {
@@ -96,7 +96,7 @@ As configurações de negócio e de impressora ficam no arquivo `appsettings.jso
 
 ### Serviço de Lavagem
 - A lavagem é um serviço avulso que pode ser adicionado a qualquer veículo já estacionado (menu **Estacionamento ➔ Adicionar/Editar Lavagem**, ou botão **LAVAGEM** na tela principal), antes de registrar a saída.
-- `WashPricing.Expressa` / `Completa` / `Interna`: valores sugeridos por tipo de lavagem — preenchidos automaticamente no formulário, mas podem ser ajustados manualmente. Também é possível escolher "Personalizada" e digitar um valor específico, além de registrar uma observação livre.
+- `WashPricing`: lista livre de tipos de lavagem e seus valores sugeridos — cada chave do JSON vira uma opção no formulário, sem limite de quantidade e sem precisar recompilar o app. O valor sugerido preenche o campo automaticamente, mas pode ser ajustado. Sempre existe também a opção "Personalizada", para digitar um valor específico fora da lista. Dá pra registrar uma observação livre em qualquer caso.
 - O valor da lavagem é somado à tarifa de estacionamento no checkout, no comprovante impresso e nos relatórios de histórico/faturamento.
 
 ---

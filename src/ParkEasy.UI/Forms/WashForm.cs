@@ -5,7 +5,6 @@ using Microsoft.Extensions.Options;
 using ParkEasy.Application.Configuration;
 using ParkEasy.Application.Interfaces;
 using ParkEasy.Domain.Entities;
-using ParkEasy.Domain.Enums;
 
 namespace ParkEasy.UI.Forms;
 
@@ -20,8 +19,11 @@ public class WashForm : Form
     [System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
     public long SessionId { get; set; }
 
+    private const string PersonalizadaLabel = "Personalizada (valor específico)";
+
     private ParkingSession? _session;
     private bool _loadingSession;
+    private readonly List<string> _washTypeKeys;
 
     private Label _lblTicketPlate = null!;
     private ComboBox _cmbType = null!;
@@ -38,6 +40,7 @@ public class WashForm : Form
     {
         _serviceProvider = serviceProvider;
         _washPricing = washPricingOptions.Value;
+        _washTypeKeys = _washPricing.Keys.ToList();
         _logger = logger;
 
         InitializeComponent();
@@ -92,10 +95,11 @@ public class WashForm : Form
             Font = Theme.FontNormal,
             FlatStyle = FlatStyle.Flat
         };
-        _cmbType.Items.Add("Expressa (só por fora)");
-        _cmbType.Items.Add("Completa");
-        _cmbType.Items.Add("Interna (aspirar e pano)");
-        _cmbType.Items.Add("Personalizada (valor específico)");
+        foreach (var washType in _washTypeKeys)
+        {
+            _cmbType.Items.Add(washType);
+        }
+        _cmbType.Items.Add(PersonalizadaLabel);
         _cmbType.SelectedIndexChanged += CmbType_SelectedIndexChanged;
         panel.Controls.Add(_cmbType);
         top += 44;
@@ -180,16 +184,17 @@ public class WashForm : Form
 
             _loadingSession = true;
 
-            if (_session.WashType.HasValue)
+            if (!string.IsNullOrWhiteSpace(_session.WashTypeName))
             {
-                _cmbType.SelectedIndex = (int)_session.WashType.Value;
+                var index = _washTypeKeys.IndexOf(_session.WashTypeName);
+                _cmbType.SelectedIndex = index >= 0 ? index : _washTypeKeys.Count; // não encontrado -> cai em "Personalizada"
                 _txtAmount.Text = (_session.WashAmount ?? 0).ToString("N2", BrCulture);
                 _txtNotes.Text = _session.WashNotes ?? string.Empty;
                 _btnRemove.Visible = true;
             }
             else
             {
-                _cmbType.SelectedIndex = 0;
+                _cmbType.SelectedIndex = _washTypeKeys.Count > 0 ? 0 : _cmbType.Items.Count - 1;
                 _btnRemove.Visible = false;
             }
 
@@ -207,16 +212,12 @@ public class WashForm : Form
     {
         if (_loadingSession) return;
 
-        var washType = (WashType)_cmbType.SelectedIndex;
-        var suggested = washType switch
-        {
-            WashType.Expressa => _washPricing.Expressa,
-            WashType.Completa => _washPricing.Completa,
-            WashType.Interna => _washPricing.Interna,
-            _ => (decimal?)null
-        };
+        var index = _cmbType.SelectedIndex;
+        var isPersonalizada = index < 0 || index >= _washTypeKeys.Count;
 
-        _txtAmount.Text = suggested.HasValue ? suggested.Value.ToString("N2", BrCulture) : string.Empty;
+        _txtAmount.Text = isPersonalizada
+            ? string.Empty
+            : _washPricing[_washTypeKeys[index]].ToString("N2", BrCulture);
     }
 
     private async void BtnSave_Click(object? sender, EventArgs e)
@@ -239,8 +240,9 @@ public class WashForm : Form
             using var scope = _serviceProvider.CreateScope();
             var parkingService = scope.ServiceProvider.GetRequiredService<IParkingService>();
 
-            var washType = (WashType)_cmbType.SelectedIndex;
-            await parkingService.AddOrUpdateWashServiceAsync(_session.Id, washType, amount, _txtNotes.Text);
+            var index = _cmbType.SelectedIndex;
+            var washTypeName = (index < 0 || index >= _washTypeKeys.Count) ? "Personalizada" : _washTypeKeys[index];
+            await parkingService.AddOrUpdateWashServiceAsync(_session.Id, washTypeName, amount, _txtNotes.Text);
 
             DialogResult = DialogResult.OK;
         }
