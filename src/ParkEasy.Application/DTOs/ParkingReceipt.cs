@@ -13,4 +13,8 @@ public class ParkingReceipt
     public DateTime ExitDateTime { get; set; }
     public TimeSpan Duration { get; set; }
     public decimal FinalAmount { get; set; }
+    public WashType? WashType { get; set; }
+    public decimal? WashAmount { get; set; }
+    public string? WashNotes { get; set; }
+    public decimal TotalAmount { get; set; }
 }

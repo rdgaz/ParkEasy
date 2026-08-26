@@ -47,6 +47,12 @@ public class ParkingDbContext : DbContext
             entity.Property(e => e.FinalAmount)
                 .HasColumnType("REAL");
 
+            entity.Property(e => e.WashAmount)
+                .HasColumnType("REAL");
+
+            entity.Property(e => e.WashNotes)
+                .HasMaxLength(300);
+
             entity.Property(e => e.Status)
                 .IsRequired();
 

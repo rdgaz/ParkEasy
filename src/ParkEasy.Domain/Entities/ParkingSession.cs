@@ -26,6 +26,12 @@ public class ParkingSession
 
     public decimal? FinalAmount { get; set; }
 
+    public WashType? WashType { get; set; }
+
+    public decimal? WashAmount { get; set; }
+
+    public string? WashNotes { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

@@ -25,6 +25,7 @@ public class CheckoutForm : Form
     private Label _lblEntry = null!;
     private Label _lblExit = null!;
     private Label _lblDuration = null!;
+    private Label _lblWash = null!;
     private Label _lblAmount = null!;
     private Button _btnConfirm = null!;
     private Button _btnCancel = null!;
@@ -46,7 +47,7 @@ public class CheckoutForm : Form
         SuspendLayout();
 
         Text = "Finalizar Estacionamento";
-        Size = new Size(460, 590);
+        Size = new Size(460, 614);
         FormBorderStyle = FormBorderStyle.FixedDialog;
         MaximizeBox = false;
         MinimizeBox = false;
@@ -73,7 +74,7 @@ public class CheckoutForm : Form
         var card = new Panel
         {
             Location = new Point(24, top),
-            Size = new Size(390, 288),
+            Size = new Size(390, 312),
             BackColor = Theme.Surface,
             Padding = new Padding(16)
         };
@@ -170,8 +171,20 @@ public class CheckoutForm : Form
         _lblDuration.Location = new Point(80, cardTop);
         card.Controls.Add(_lblDuration);
 
+        cardTop += 24;
+
+        var lblWashHead = Theme.CreateLabel("Lavagem:", Theme.FontNormal, Theme.TextSecondary);
+        lblWashHead.Location = new Point(16, cardTop);
+        card.Controls.Add(lblWashHead);
+
+        _lblWash = Theme.CreateLabel("—", Theme.FontMedium, Theme.Success);
+        _lblWash.AutoSize = false;
+        _lblWash.Size = new Size(294, 40);
+        _lblWash.Location = new Point(80, cardTop);
+        card.Controls.Add(_lblWash);
+
         panel.Controls.Add(card);
-        top += 308;
+        top += 332;
 
         // Amount Box
         var amountPanel = new Panel
@@ -252,7 +265,13 @@ public class CheckoutForm : Form
             _lblEntry.Text = _session.EntryDateTime.ToString("dd/MM/yyyy HH:mm:ss");
             _lblExit.Text = now.ToString("dd/MM/yyyy HH:mm:ss");
             _lblDuration.Text = $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
-            _lblAmount.Text = fee.ToString("C2", brCulture);
+
+            var washAmount = _session.WashAmount ?? 0;
+            _lblWash.Text = _session.WashType.HasValue
+                ? $"{_session.WashType.Value.ToDisplayName()} — {washAmount.ToString("C2", brCulture)}"
+                : "—";
+
+            _lblAmount.Text = (fee + washAmount).ToString("C2", brCulture);
         }
         catch (Exception ex)
         {

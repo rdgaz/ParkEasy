@@ -181,12 +181,28 @@ public class BematechMp4200PrinterService : IPrinterService
             WriteText(ms, $"{(int)receipt.Duration.TotalHours:D2}:{receipt.Duration.Minutes:D2}");
             WriteText(ms, "");
 
+            var brCulture = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
+
+            Write(ms, CMD_LEFT);
+            WriteText(ms, $"Estacionamento: {receipt.FinalAmount.ToString("C2", brCulture)}");
+
+            // Wash service (optional)
+            if (receipt.WashAmount.HasValue && receipt.WashType.HasValue)
+            {
+                WriteText(ms, $"Lavagem ({receipt.WashType.Value.ToDisplayName()}): {receipt.WashAmount.Value.ToString("C2", brCulture)}");
+
+                if (!string.IsNullOrWhiteSpace(receipt.WashNotes))
+                    WriteText(ms, $"Obs: {receipt.WashNotes}");
+            }
+
+            WriteText(ms, "");
+
             // Amount
             Write(ms, CMD_CENTER);
             Write(ms, CMD_BOLD_ON);
             WriteText(ms, "VALOR PAGO:");
             Write(ms, CMD_DOUBLE_SIZE);
-            WriteText(ms, receipt.FinalAmount.ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")));
+            WriteText(ms, receipt.TotalAmount.ToString("C2", brCulture));
             Write(ms, CMD_NORMAL_SIZE);
             Write(ms, CMD_BOLD_OFF);
             WriteText(ms, "");

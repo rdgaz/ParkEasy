@@ -102,6 +102,53 @@ public class ParkingService : IParkingService
         return session;
     }
 
+    public async Task<ParkingSession> AddOrUpdateWashServiceAsync(long sessionId, WashType washType, decimal amount, string? notes)
+    {
+        var session = await _repository.GetByIdAsync(sessionId);
+
+        if (session is null)
+            throw new InvalidOperationException("Sessão de estacionamento não encontrada.");
+
+        if (session.Status != ParkingSessionStatus.Active)
+            throw new InvalidOperationException("Não é possível adicionar lavagem a uma sessão já finalizada.");
+
+        if (amount <= 0)
+            throw new ArgumentException("Informe um valor de lavagem maior que zero.");
+
+        session.WashType = washType;
+        session.WashAmount = amount;
+        session.WashNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        session.UpdatedAt = DateTime.Now;
+
+        await _repository.UpdateAsync(session);
+
+        _logger.LogInformation(
+            "Lavagem registrada: Ticket={TicketNumber}, Tipo={WashType}, Valor={WashAmount:C}",
+            session.TicketNumber, session.WashType, session.WashAmount);
+
+        return session;
+    }
+
+    public async Task<ParkingSession> RemoveWashServiceAsync(long sessionId)
+    {
+        var session = await _repository.GetByIdAsync(sessionId);
+
+        if (session is null)
+            throw new InvalidOperationException("Sessão de estacionamento não encontrada.");
+
+        if (session.Status != ParkingSessionStatus.Active)
+            throw new InvalidOperationException("Não é possível remover lavagem de uma sessão já finalizada.");
+
+        session.WashType = null;
+        session.WashAmount = null;
+        session.WashNotes = null;
+        session.UpdatedAt = DateTime.Now;
+
+        await _repository.UpdateAsync(session);
+
+        return session;
+    }
+
     public async Task<List<ParkingSession>> GetActiveSessionsAsync()
     {
         return await _repository.GetActiveSessionsAsync();
@@ -141,7 +188,7 @@ public class ParkingService : IParkingService
     public async Task<(decimal totalRevenue, int totalVehicles)> GetHistorySummaryAsync(HistoryFilter filter)
     {
         var sessions = await GetHistoryAsync(filter);
-        var totalRevenue = sessions.Sum(s => s.FinalAmount ?? 0);
+        var totalRevenue = sessions.Sum(s => (s.FinalAmount ?? 0) + (s.WashAmount ?? 0));
         var totalVehicles = sessions.Count;
         return (totalRevenue, totalVehicles);
     }
@@ -175,7 +222,11 @@ public class ParkingService : IParkingService
             EntryDateTime = session.EntryDateTime,
             ExitDateTime = session.ExitDateTime.Value,
             Duration = session.ExitDateTime.Value - session.EntryDateTime,
-            FinalAmount = session.FinalAmount.Value
+            FinalAmount = session.FinalAmount.Value,
+            WashType = session.WashType,
+            WashAmount = session.WashAmount,
+            WashNotes = session.WashNotes,
+            TotalAmount = session.FinalAmount.Value + (session.WashAmount ?? 0)
         };
         return Task.FromResult(receipt);
     }

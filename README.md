@@ -76,6 +76,12 @@ As configurações de negócio e de impressora ficam no arquivo `appsettings.jso
     }
   },
 
+  "WashPricing": {
+    "Expressa": 15.00,
+    "Completa": 35.00,
+    "Interna": 20.00
+  },
+
   "Printer": {
     "Type": "Mock",
     "WindowsPrinterName": "Bematech MP-4200 TH"
@@ -87,6 +93,11 @@ As configurações de negócio e de impressora ficam no arquivo `appsettings.jso
 - `GracePeriodMinutes`: Período de tolerância em minutos (ex: 10 minutos = R$ 0,00), válido para todos os tipos de veículo.
 - `DailyMaximum`: Teto máximo diário de cobrança, válido para todos os tipos de veículo.
 - `Moto` / `Carro` / `VagaDupla`: cada tipo de veículo tem seu próprio `FirstHour` (valor cobrado até a primeira hora após a tolerância) e `AdditionalHour` (valor cobrado por hora, ou fração de hora, adicional). `VagaDupla` representa veículos que ocupam duas vagas físicas (ex: caminhonetes, vans) e conta como 2 vagas no painel de ocupação.
+
+### Serviço de Lavagem
+- A lavagem é um serviço avulso que pode ser adicionado a qualquer veículo já estacionado (menu **Estacionamento ➔ Adicionar/Editar Lavagem**, ou botão **LAVAGEM** na tela principal), antes de registrar a saída.
+- `WashPricing.Expressa` / `Completa` / `Interna`: valores sugeridos por tipo de lavagem — preenchidos automaticamente no formulário, mas podem ser ajustados manualmente. Também é possível escolher "Personalizada" e digitar um valor específico, além de registrar uma observação livre.
+- O valor da lavagem é somado à tarifa de estacionamento no checkout, no comprovante impresso e nos relatórios de histórico/faturamento.
 
 ---
 

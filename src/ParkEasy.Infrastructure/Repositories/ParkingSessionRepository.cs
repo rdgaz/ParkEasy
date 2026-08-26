@@ -116,7 +116,7 @@ public class ParkingSessionRepository : IParkingSessionRepository
             .Where(s => s.Status == ParkingSessionStatus.Completed &&
                         s.ExitDateTime >= today &&
                         s.ExitDateTime < tomorrow)
-            .SumAsync(s => s.FinalAmount ?? 0);
+            .SumAsync(s => (s.FinalAmount ?? 0) + (s.WashAmount ?? 0));
     }
 
     public async Task<int> GetActiveCountAsync()

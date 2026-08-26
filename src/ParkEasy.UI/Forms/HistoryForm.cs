@@ -254,6 +254,7 @@ public class HistoryForm : Form
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Modelo", HeaderText = "Modelo", Width = 120 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Cliente", HeaderText = "Cliente", Width = 130 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Telefone", HeaderText = "Telefone", Width = 120 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Lavagem", HeaderText = "Lavagem", Width = 90 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Entrada", HeaderText = "Entrada", Width = 130 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Saida", HeaderText = "Saída", Width = 130 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Tempo", HeaderText = "Tempo", Width = 80 });
@@ -318,10 +319,11 @@ public class HistoryForm : Form
                 session.VehicleModel ?? "—",
                 session.CustomerName ?? "—",
                 session.CustomerPhone ?? "—",
+                session.WashType?.ToDisplayName() ?? "—",
                 session.EntryDateTime.ToString("dd/MM/yyyy HH:mm"),
                 session.ExitDateTime?.ToString("dd/MM/yyyy HH:mm") ?? "—",
                 $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}",
-                (session.FinalAmount ?? 0m).ToString("C2", brCulture),
+                ((session.FinalAmount ?? 0m) + (session.WashAmount ?? 0m)).ToString("C2", brCulture),
                 session.Id
             );
         }

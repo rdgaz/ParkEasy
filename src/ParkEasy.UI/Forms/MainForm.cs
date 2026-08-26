@@ -150,11 +150,13 @@ public class MainForm : Form
         var menuEstacionamento = new ToolStripMenuItem("Estacionamento");
         var itemEntry = new ToolStripMenuItem("Nova Entrada (F2)", null, (_, _) => OpenEntryForm());
         var itemCheckout = new ToolStripMenuItem("Registrar Saída", null, (_, _) => OpenCheckoutForSelected());
+        var itemWash = new ToolStripMenuItem("Adicionar/Editar Lavagem", null, (_, _) => OpenWashForSelected());
         var itemHistory = new ToolStripMenuItem("Histórico de Permanências (F6)", null, (_, _) => OpenHistoryForm());
         var itemRefresh = new ToolStripMenuItem("Atualizar (F5)", null, async (_, _) => await LoadDataAsync());
 
         menuEstacionamento.DropDownItems.Add(itemEntry);
         menuEstacionamento.DropDownItems.Add(itemCheckout);
+        menuEstacionamento.DropDownItems.Add(itemWash);
         menuEstacionamento.DropDownItems.Add(new ToolStripSeparator());
         menuEstacionamento.DropDownItems.Add(itemHistory);
         menuEstacionamento.DropDownItems.Add(itemRefresh);
@@ -255,31 +257,40 @@ public class MainForm : Form
         btnEntry.Click += (_, _) => OpenEntryForm();
         panel.Controls.Add(btnEntry);
 
-        var btnCheckout = Theme.CreatePrimaryButton("REGISTRAR SAÍDA", 210);
+        var btnCheckout = Theme.CreatePrimaryButton("REGISTRAR SAÍDA", 190);
         btnCheckout.Location = new Point(230, buttonY);
         btnCheckout.BackColor = Theme.Warning;
         btnCheckout.FlatAppearance.MouseOverBackColor = Color.FromArgb(217, 119, 6);
         btnCheckout.Click += (_, _) => OpenCheckoutForSelected();
         panel.Controls.Add(btnCheckout);
 
-        var btnHistory = Theme.CreateSecondaryButton("HISTÓRICO (F6)", 160);
-        btnHistory.Location = new Point(450, buttonY);
+        var btnWash = Theme.CreateSecondaryButton("LAVAGEM", 120);
+        btnWash.Location = new Point(430, buttonY);
+        btnWash.Click += (_, _) => OpenWashForSelected();
+        panel.Controls.Add(btnWash);
+
+        var btnHistory = Theme.CreateSecondaryButton("HISTÓRICO (F6)", 150);
+        btnHistory.Location = new Point(560, buttonY);
         btnHistory.Click += (_, _) => OpenHistoryForm();
         panel.Controls.Add(btnHistory);
 
-        var btnRefresh = Theme.CreateSecondaryButton("ATUALIZAR (F5)", 150);
-        btnRefresh.Location = new Point(620, buttonY);
+        var btnRefresh = Theme.CreateSecondaryButton("ATUALIZAR (F5)", 140);
+        btnRefresh.Location = new Point(720, buttonY);
         btnRefresh.Click += async (_, _) => await LoadDataAsync();
         panel.Controls.Add(btnRefresh);
 
-        // Search Input (Direita)
-        _txtSearch = Theme.CreateInput(300);
+        // Search Input (Direita) — reposicionado dinamicamente para nunca sobrepor os botões
+        _txtSearch = Theme.CreateInput(260);
         _txtSearch.PlaceholderText = "Pesquisar placa ou cliente (F4)...";
         _txtSearch.CharacterCasing = CharacterCasing.Upper;
-        _txtSearch.Location = new Point(panel.Width - 300, buttonY);
         _txtSearch.Anchor = AnchorStyles.Top | AnchorStyles.Right;
         _txtSearch.TextChanged += async (_, _) => await FilterActiveSessionsAsync();
         panel.Controls.Add(_txtSearch);
+
+        void RepositionSearch() => _txtSearch.Location = new Point(
+            Math.Max(860, panel.ClientSize.Width - _txtSearch.Width), buttonY);
+        panel.Resize += (_, _) => RepositionSearch();
+        RepositionSearch();
 
         return panel;
     }
@@ -314,6 +325,7 @@ public class MainForm : Form
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Modelo", HeaderText = "Modelo", MinimumWidth = 140, FillWeight = 140 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Cliente", HeaderText = "Cliente", MinimumWidth = 150, FillWeight = 150 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Telefone", HeaderText = "Telefone", MinimumWidth = 130, FillWeight = 130 });
+        _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Lavagem", HeaderText = "Lavagem", MinimumWidth = 100, FillWeight = 100 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Entrada", HeaderText = "Horário de Entrada", MinimumWidth = 160, FillWeight = 160 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Tempo", HeaderText = "Permanência", MinimumWidth = 120, FillWeight = 120 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "ValorEstimado", HeaderText = "Valor Atual", MinimumWidth = 120, FillWeight = 120 });
@@ -404,6 +416,7 @@ public class MainForm : Form
                 session.VehicleModel ?? "—",
                 session.CustomerName ?? "—",
                 session.CustomerPhone ?? "—",
+                session.WashType?.ToDisplayName() ?? "—",
                 session.EntryDateTime.ToString("dd/MM/yyyy HH:mm"),
                 $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}",
                 fee.ToString("C2", brCulture),
@@ -437,6 +450,26 @@ public class MainForm : Form
         checkoutForm.SessionId = sessionId;
 
         if (checkoutForm.ShowDialog(this) == DialogResult.OK)
+        {
+            _ = LoadDataAsync();
+        }
+    }
+
+    private void OpenWashForSelected()
+    {
+        if (_gridActive.CurrentRow is null || _gridActive.CurrentRow.Index < 0)
+        {
+            MessageBox.Show("Selecione um veículo na lista para adicionar/editar a lavagem.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return;
+        }
+
+        if (_gridActive.CurrentRow.Cells["SessionId"].Value is not long sessionId) return;
+
+        using var scope = _serviceProvider.CreateScope();
+        var washForm = scope.ServiceProvider.GetRequiredService<WashForm>();
+        washForm.SessionId = sessionId;
+
+        if (washForm.ShowDialog(this) == DialogResult.OK)
         {
             _ = LoadDataAsync();
         }

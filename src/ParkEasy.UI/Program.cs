@@ -29,7 +29,10 @@ internal static class Program
         {
             var db = scope.ServiceProvider.GetRequiredService<ParkingDbContext>();
             db.Database.EnsureCreated();
-            EnsureVehicleTypeColumn(db);
+            EnsureColumnExists(db, "VehicleType", "INTEGER NOT NULL DEFAULT 1");
+            EnsureColumnExists(db, "WashType", "INTEGER NULL");
+            EnsureColumnExists(db, "WashAmount", "REAL NULL");
+            EnsureColumnExists(db, "WashNotes", "TEXT NULL");
         }
 
         var mainForm = services.GetRequiredService<MainForm>();
@@ -49,6 +52,7 @@ internal static class Program
         services.AddSingleton<IConfiguration>(configuration);
         services.Configure<ParkingSettings>(configuration.GetSection(ParkingSettings.SectionName));
         services.Configure<PricingSettings>(configuration.GetSection(PricingSettings.SectionName));
+        services.Configure<WashPricingSettings>(configuration.GetSection(WashPricingSettings.SectionName));
         services.Configure<PrinterSettings>(configuration.GetSection(PrinterSettings.SectionName));
 
         // Logging
@@ -86,26 +90,28 @@ internal static class Program
         services.AddTransient<EntryForm>();
         services.AddTransient<CheckoutForm>();
         services.AddTransient<HistoryForm>();
+        services.AddTransient<WashForm>();
 
         return services.BuildServiceProvider();
     }
 
     /// <summary>
-    /// Lightweight schema upgrade for pre-existing SQLite databases created before
-    /// the VehicleType column existed. EnsureCreated() only creates new databases,
-    /// so older files need this column added manually.
+    /// Lightweight schema upgrade for pre-existing SQLite databases created before a given
+    /// column existed. EnsureCreated() only creates new databases, so older files need
+    /// columns added manually as the model evolves.
     /// </summary>
-    private static void EnsureVehicleTypeColumn(ParkingDbContext db)
+    private static void EnsureColumnExists(ParkingDbContext db, string columnName, string columnDefinition)
     {
         var hasColumn = db.Database
-            .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('ParkingSessions') WHERE name = 'VehicleType'")
+            .SqlQueryRaw<string>(
+                $"SELECT name FROM pragma_table_info('ParkingSessions') WHERE name = '{columnName}'")
             .AsEnumerable()
             .Any();
 
         if (!hasColumn)
         {
             db.Database.ExecuteSqlRaw(
-                "ALTER TABLE ParkingSessions ADD COLUMN VehicleType INTEGER NOT NULL DEFAULT 1");
+                $"ALTER TABLE ParkingSessions ADD COLUMN {columnName} {columnDefinition}");
         }
     }
 }
