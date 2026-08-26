@@ -50,6 +50,7 @@ internal static class Program
 
         // Configuration
         services.AddSingleton<IConfiguration>(configuration);
+        services.Configure<BusinessSettings>(configuration.GetSection(BusinessSettings.SectionName));
         services.Configure<ParkingSettings>(configuration.GetSection(ParkingSettings.SectionName));
         services.Configure<PricingSettings>(configuration.GetSection(PricingSettings.SectionName));
         services.Configure<WashPricingSettings>(configuration.GetSection(WashPricingSettings.SectionName));
@@ -76,7 +77,7 @@ internal static class Program
 
         // Printer — choose implementation based on config
         var printerType = configuration.GetSection("Printer:Type").Value ?? "Mock";
-        if (printerType.Equals("BematechMP4200TH", StringComparison.OrdinalIgnoreCase))
+        if (printerType.Equals("Bematech MP-4200 TH", StringComparison.OrdinalIgnoreCase))
         {
             services.AddSingleton<IPrinterService, BematechMp4200PrinterService>();
         }

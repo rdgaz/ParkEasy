@@ -14,6 +14,7 @@ namespace ParkEasy.Infrastructure.Printing;
 public class BematechMp4200PrinterService : IPrinterService
 {
     private readonly PrinterSettings _settings;
+    private readonly BusinessSettings _business;
     private readonly ILogger<BematechMp4200PrinterService> _logger;
 
     // ESC/POS command constants
@@ -31,9 +32,11 @@ public class BematechMp4200PrinterService : IPrinterService
 
     public BematechMp4200PrinterService(
         IOptions<PrinterSettings> settings,
+        IOptions<BusinessSettings> businessOptions,
         ILogger<BematechMp4200PrinterService> logger)
     {
         _settings = settings.Value;
+        _business = businessOptions.Value;
         _logger = logger;
 
         // Register code page provider for Brazilian character support
@@ -51,61 +54,54 @@ public class BematechMp4200PrinterService : IPrinterService
 
             Write(ms, CMD_INIT);
 
-            // Header
+            // 1. Nome do estacionamento
             Write(ms, CMD_CENTER);
             Write(ms, CMD_BOLD_ON);
             Write(ms, CMD_DOUBLE_SIZE);
-            WriteText(ms, "ESTACIONAMENTO");
+            WriteText(ms, _business.Name);
             Write(ms, CMD_NORMAL_SIZE);
             Write(ms, CMD_BOLD_OFF);
+
+            // 2. CNPJ (menor que o nome)
+            if (!string.IsNullOrWhiteSpace(_business.Cnpj))
+            {
+                WriteText(ms, $"CNPJ {_business.Cnpj}");
+            }
+
+            // 3. Duas linhas de separação
+            WriteText(ms, "--------------------------------");
+            WriteText(ms, "--------------------------------");
             WriteText(ms, "");
 
-            // Ticket number
+            // 4. Placa (tamanho maior)
             Write(ms, CMD_BOLD_ON);
-            WriteText(ms, $"Ticket: {ticket.TicketNumber}");
-            Write(ms, CMD_BOLD_OFF);
-            WriteText(ms, "");
-
-            // Plate
-            Write(ms, CMD_LEFT);
-            Write(ms, CMD_BOLD_ON);
-            WriteText(ms, "PLACA:");
             Write(ms, CMD_DOUBLE_SIZE);
             WriteText(ms, ticket.Plate);
             Write(ms, CMD_NORMAL_SIZE);
+
+            // 5. Modelo do carro registrado
+            if (!string.IsNullOrWhiteSpace(ticket.VehicleModel))
+            {
+                WriteText(ms, ticket.VehicleModel.ToUpperInvariant());
+            }
             Write(ms, CMD_BOLD_OFF);
             WriteText(ms, "");
 
-            // Vehicle type
-            WriteText(ms, "TIPO:");
-            WriteText(ms, ticket.VehicleType.ToDisplayName());
-            WriteText(ms, "");
-
-            // Model (optional)
-            if (!string.IsNullOrWhiteSpace(ticket.VehicleModel))
-            {
-                WriteText(ms, "MODELO:");
-                WriteText(ms, ticket.VehicleModel);
-                WriteText(ms, "");
-            }
-
-            // Customer (optional)
-            if (!string.IsNullOrWhiteSpace(ticket.CustomerName))
-            {
-                WriteText(ms, "CLIENTE:");
-                WriteText(ms, ticket.CustomerName);
-                WriteText(ms, "");
-            }
-
-            // Entry date/time
-            WriteText(ms, "ENTRADA:");
-            WriteText(ms, ticket.EntryDateTime.ToString("dd/MM/yyyy"));
-            WriteText(ms, ticket.EntryDateTime.ToString("HH:mm:ss"));
+            // 6-8. Tipo, Ticket, Data e Hora
+            Write(ms, CMD_LEFT);
+            WriteText(ms, $"Tipo: {ticket.VehicleType.ToDisplayName()}");
+            WriteText(ms, $"Ticket: {ticket.TicketNumber}");
+            WriteText(ms, $"Data: {ticket.EntryDateTime:dd/MM/yyyy}");
+            WriteText(ms, $"Hora: {ticket.EntryDateTime:HH:mm}");
             WriteText(ms, "");
 
             // Footer
             Write(ms, CMD_CENTER);
-            WriteText(ms, "Guarde este ticket.");
+            WriteText(ms, "Indispensável a apresentação deste");
+            WriteText(ms, "cupom para a retirada do veículo");
+            WriteText(ms, "");
+            WriteText(ms, "ParkEasy - software de gestão");
+            WriteText(ms, "para estacionamentos");
             WriteText(ms, "");
             WriteText(ms, "");
 
@@ -152,7 +148,7 @@ public class BematechMp4200PrinterService : IPrinterService
             Write(ms, CMD_CENTER);
             WriteText(ms, "--------------------------------");
             Write(ms, CMD_BOLD_ON);
-            WriteText(ms, "ESTACIONAMENTO");
+            WriteText(ms, _business.Name);
             Write(ms, CMD_BOLD_OFF);
             WriteText(ms, "--------------------------------");
             WriteText(ms, "");
