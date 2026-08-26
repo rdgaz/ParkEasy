@@ -199,7 +199,7 @@ public class EntryForm : Form
             _txtCustomer.Text = previous.CustomerName ?? string.Empty;
             _txtPhone.Text = previous.CustomerPhone ?? string.Empty;
 
-            _lblPlateHint.Text = "✓ Dados preenchidos a partir do cadastro anterior desta placa.";
+            _lblPlateHint.Text = "✓ Registro anterior encontrado.";
         }
         catch (Exception ex)
         {
