@@ -5,6 +5,8 @@ using Microsoft.Extensions.Logging;
 using ParkEasy.Application.Configuration;
 using ParkEasy.Application.Interfaces;
 using ParkEasy.Application.Services;
+using ParkEasy.Domain.Entities;
+using ParkEasy.Domain.Enums;
 using ParkEasy.Domain.Interfaces;
 using ParkEasy.Infrastructure.Data;
 using ParkEasy.Infrastructure.Printing;
@@ -15,6 +17,9 @@ namespace ParkEasy.UI;
 
 internal static class Program
 {
+    private const string DefaultAdminUsername = "admin";
+    private const string DefaultAdminPassword = "855683";
+
     [STAThread]
     static void Main()
     {
@@ -33,6 +38,19 @@ internal static class Program
             EnsureColumnExists(db, "WashTypeName", "TEXT NULL");
             EnsureColumnExists(db, "WashAmount", "REAL NULL");
             EnsureColumnExists(db, "WashNotes", "TEXT NULL");
+            EnsureUsersTable(db);
+
+            SeedDefaultAdminIfNeeded(scope.ServiceProvider);
+        }
+
+        // Login gate — nada abre sem autenticação
+        using (var loginScope = services.CreateScope())
+        {
+            var loginForm = loginScope.ServiceProvider.GetRequiredService<LoginForm>();
+            if (loginForm.ShowDialog() != DialogResult.OK)
+            {
+                return;
+            }
         }
 
         var mainForm = services.GetRequiredService<MainForm>();
@@ -70,10 +88,13 @@ internal static class Program
 
         // Repositories
         services.AddScoped<IParkingSessionRepository, ParkingSessionRepository>();
+        services.AddScoped<IUserRepository, UserRepository>();
 
         // Services
         services.AddScoped<IParkingFeeCalculator, ParkingFeeCalculator>();
         services.AddScoped<IParkingService, ParkingService>();
+        services.AddScoped<IAuthService, AuthService>();
+        services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
 
         // Printer — choose implementation based on config
         var printerType = configuration.GetSection("Printer:Type").Value ?? "Mock";
@@ -87,6 +108,9 @@ internal static class Program
         }
 
         // Forms
+        services.AddTransient<LoginForm>();
+        services.AddTransient<ChangePasswordForm>();
+        services.AddTransient<ManageUsersForm>();
         services.AddTransient<MainForm>();
         services.AddTransient<EntryForm>();
         services.AddTransient<CheckoutForm>();
@@ -114,5 +138,57 @@ internal static class Program
             db.Database.ExecuteSqlRaw(
                 $"ALTER TABLE ParkingSessions ADD COLUMN {columnName} {columnDefinition}");
         }
+    }
+
+    /// <summary>
+    /// EnsureCreated() só cria tabelas novas em bancos que ainda não existem — bancos
+    /// já criados antes da tabela Users existir precisam dela adicionada manualmente.
+    /// </summary>
+    private static void EnsureUsersTable(ParkingDbContext db)
+    {
+        db.Database.ExecuteSqlRaw(
+            """
+            CREATE TABLE IF NOT EXISTS Users (
+                Id INTEGER NOT NULL CONSTRAINT PK_Users PRIMARY KEY AUTOINCREMENT,
+                Username TEXT NOT NULL,
+                PasswordHash TEXT NOT NULL,
+                PasswordSalt TEXT NOT NULL,
+                Role INTEGER NOT NULL DEFAULT 0,
+                CreatedAt TEXT NOT NULL
+            );
+            """);
+
+        db.Database.ExecuteSqlRaw(
+            "CREATE UNIQUE INDEX IF NOT EXISTS IX_Users_Username ON Users (Username);");
+
+        // Bancos criados antes do cargo (Role) existir na tabela.
+        var hasRoleColumn = db.Database
+            .SqlQueryRaw<string>("SELECT name FROM pragma_table_info('Users') WHERE name = 'Role'")
+            .AsEnumerable()
+            .Any();
+
+        if (!hasRoleColumn)
+        {
+            db.Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN Role INTEGER NOT NULL DEFAULT 0");
+        }
+    }
+
+    private static void SeedDefaultAdminIfNeeded(IServiceProvider serviceProvider)
+    {
+        var userRepository = serviceProvider.GetRequiredService<IUserRepository>();
+
+        if (userRepository.AnyUsersExistAsync().GetAwaiter().GetResult())
+            return;
+
+        var (hash, salt) = PasswordHasher.Hash(DefaultAdminPassword);
+
+        userRepository.AddAsync(new User
+        {
+            Username = DefaultAdminUsername,
+            PasswordHash = hash,
+            PasswordSalt = salt,
+            Role = UserRole.Desenvolvedor,
+            CreatedAt = DateTime.Now
+        }).GetAwaiter().GetResult();
     }
 }

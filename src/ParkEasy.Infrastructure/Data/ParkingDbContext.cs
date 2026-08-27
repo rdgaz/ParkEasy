@@ -10,6 +10,7 @@ public class ParkingDbContext : DbContext
     }
 
     public DbSet<ParkingSession> ParkingSessions { get; set; } = null!;
+    public DbSet<User> Users { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -68,6 +69,34 @@ public class ParkingDbContext : DbContext
             entity.HasIndex(e => e.Status);
 
             entity.HasIndex(e => e.EntryDateTime);
+        });
+
+        modelBuilder.Entity<User>(entity =>
+        {
+            entity.ToTable("Users");
+
+            entity.HasKey(e => e.Id);
+
+            entity.Property(e => e.Id)
+                .ValueGeneratedOnAdd();
+
+            entity.Property(e => e.Username)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.PasswordHash)
+                .IsRequired()
+                .HasMaxLength(100);
+
+            entity.Property(e => e.PasswordSalt)
+                .IsRequired()
+                .HasMaxLength(50);
+
+            entity.Property(e => e.Role)
+                .IsRequired();
+
+            entity.HasIndex(e => e.Username)
+                .IsUnique();
         });
     }
 }

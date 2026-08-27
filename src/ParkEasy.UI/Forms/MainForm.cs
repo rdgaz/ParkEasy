@@ -137,12 +137,17 @@ public class MainForm : Form
         var itemTestPrinter = new ToolStripMenuItem("Testar Impressora", null, async (_, _) => await TestPrinterAsync());
         var itemBackup = new ToolStripMenuItem("Fazer Backup", null, (_, _) => DoBackup());
         var itemOpenBackups = new ToolStripMenuItem("Abrir Pasta de Backups", null, (_, _) => OpenBackupsFolder());
+        var itemChangePassword = new ToolStripMenuItem("Alterar Minha Senha", null, (_, _) => OpenChangePasswordForm());
+        var itemManageUsers = new ToolStripMenuItem("Gerenciar Usuários", null, (_, _) => OpenManageUsersForm());
         var itemExit = new ToolStripMenuItem("Sair", null, (_, _) => Close());
 
         menuSistema.DropDownItems.Add(itemTestPrinter);
         menuSistema.DropDownItems.Add(new ToolStripSeparator());
         menuSistema.DropDownItems.Add(itemBackup);
         menuSistema.DropDownItems.Add(itemOpenBackups);
+        menuSistema.DropDownItems.Add(new ToolStripSeparator());
+        menuSistema.DropDownItems.Add(itemChangePassword);
+        menuSistema.DropDownItems.Add(itemManageUsers);
         menuSistema.DropDownItems.Add(new ToolStripSeparator());
         menuSistema.DropDownItems.Add(itemExit);
 
@@ -453,6 +458,20 @@ public class MainForm : Form
         {
             _ = LoadDataAsync();
         }
+    }
+
+    private void OpenChangePasswordForm()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var changePasswordForm = scope.ServiceProvider.GetRequiredService<ChangePasswordForm>();
+        changePasswordForm.ShowDialog(this);
+    }
+
+    private void OpenManageUsersForm()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var manageUsersForm = scope.ServiceProvider.GetRequiredService<ManageUsersForm>();
+        manageUsersForm.ShowDialog(this);
     }
 
     private void OpenWashForSelected()
