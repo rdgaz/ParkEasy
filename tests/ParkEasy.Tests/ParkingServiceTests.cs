@@ -133,8 +133,33 @@ public class ParkingServiceTests
         Assert.Equal("Lav. Completa", result.WashTypeName);
         Assert.Equal(35.00m, result.WashAmount);
         Assert.Equal("Cliente pediu cera", result.WashNotes);
+        Assert.Equal(WashStatus.Pendente, result.WashStatus);
+        Assert.NotNull(result.WashRequestedAt);
 
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<ParkingSession>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task AddOrUpdateWashServiceAsync_EditingExistingWash_KeepsStatusAndRequestedAt()
+    {
+        var requestedAt = DateTime.Now.AddMinutes(-10);
+        var activeSession = new ParkingSession
+        {
+            Id = 25,
+            Status = ParkingSessionStatus.Active,
+            WashTypeName = "Lav. Simples",
+            WashAmount = 20.00m,
+            WashStatus = WashStatus.Lavando,
+            WashRequestedAt = requestedAt
+        };
+
+        _repoMock.Setup(r => r.GetByIdAsync(25)).ReturnsAsync(activeSession);
+
+        var result = await _parkingService.AddOrUpdateWashServiceAsync(25, "Lav. Completa", 35.00m, "Trocou o tipo");
+
+        Assert.Equal("Lav. Completa", result.WashTypeName);
+        Assert.Equal(WashStatus.Lavando, result.WashStatus);
+        Assert.Equal(requestedAt, result.WashRequestedAt);
     }
 
     [Fact]
@@ -186,8 +211,68 @@ public class ParkingServiceTests
         Assert.Null(result.WashTypeName);
         Assert.Null(result.WashAmount);
         Assert.Null(result.WashNotes);
+        Assert.Null(result.WashStatus);
+        Assert.Null(result.WashRequestedAt);
 
         _repoMock.Verify(r => r.UpdateAsync(It.IsAny<ParkingSession>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task StartWashingAsync_PendingWash_MovesToLavando()
+    {
+        var session = new ParkingSession { Id = 30, WashStatus = WashStatus.Pendente };
+        _repoMock.Setup(r => r.GetByIdAsync(30)).ReturnsAsync(session);
+
+        var result = await _parkingService.StartWashingAsync(30);
+
+        Assert.Equal(WashStatus.Lavando, result.WashStatus);
+        _repoMock.Verify(r => r.UpdateAsync(session), Times.Once);
+    }
+
+    [Fact]
+    public async Task StartWashingAsync_NotPending_ThrowsInvalidOperationException()
+    {
+        var session = new ParkingSession { Id = 31, WashStatus = WashStatus.Lavando };
+        _repoMock.Setup(r => r.GetByIdAsync(31)).ReturnsAsync(session);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _parkingService.StartWashingAsync(31));
+    }
+
+    [Fact]
+    public async Task CompleteWashingAsync_WashingWash_MovesToConcluida()
+    {
+        var session = new ParkingSession { Id = 32, WashStatus = WashStatus.Lavando };
+        _repoMock.Setup(r => r.GetByIdAsync(32)).ReturnsAsync(session);
+
+        var result = await _parkingService.CompleteWashingAsync(32);
+
+        Assert.Equal(WashStatus.Concluida, result.WashStatus);
+    }
+
+    [Fact]
+    public async Task CompleteWashingAsync_NotWashing_ThrowsInvalidOperationException()
+    {
+        var session = new ParkingSession { Id = 33, WashStatus = WashStatus.Pendente };
+        _repoMock.Setup(r => r.GetByIdAsync(33)).ReturnsAsync(session);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _parkingService.CompleteWashingAsync(33));
+    }
+
+    [Fact]
+    public async Task GetActiveWashesAsync_ReturnsOnlyActiveSessionsWithWashStatus()
+    {
+        var sessions = new List<ParkingSession>
+        {
+            new() { Id = 1, WashStatus = WashStatus.Pendente },
+            new() { Id = 2, WashStatus = null },
+            new() { Id = 3, WashStatus = WashStatus.Concluida }
+        };
+
+        _repoMock.Setup(r => r.GetActiveSessionsAsync()).ReturnsAsync(sessions);
+
+        var result = await _parkingService.GetActiveWashesAsync();
+
+        Assert.Equal([1L, 3L], result.Select(s => s.Id));
     }
 
     [Fact]
@@ -221,6 +306,27 @@ public class ParkingServiceTests
 
         Assert.Same(previousSession, result);
         _repoMock.Verify(r => r.GetMostRecentByPlateAsync("ABC1D23"), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetActiveSessionByPlateAsync_ValidPlate_NormalizesAndDelegatesToRepository()
+    {
+        var activeSession = new ParkingSession { Id = 40, Plate = "ABC1D23", Status = ParkingSessionStatus.Active };
+        _repoMock.Setup(r => r.GetActiveByPlateAsync("ABC1D23")).ReturnsAsync(activeSession);
+
+        var result = await _parkingService.GetActiveSessionByPlateAsync("abc-1d23");
+
+        Assert.Same(activeSession, result);
+    }
+
+    [Fact]
+    public async Task GetActiveSessionByPlateAsync_NoActiveSession_ReturnsNull()
+    {
+        _repoMock.Setup(r => r.GetActiveByPlateAsync("ABC1D23")).ReturnsAsync((ParkingSession?)null);
+
+        var result = await _parkingService.GetActiveSessionByPlateAsync("ABC1D23");
+
+        Assert.Null(result);
     }
 
     [Fact]

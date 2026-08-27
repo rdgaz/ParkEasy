@@ -38,6 +38,8 @@ internal static class Program
             EnsureColumnExists(db, "WashTypeName", "TEXT NULL");
             EnsureColumnExists(db, "WashAmount", "REAL NULL");
             EnsureColumnExists(db, "WashNotes", "TEXT NULL");
+            EnsureColumnExists(db, "WashStatus", "INTEGER NULL");
+            EnsureColumnExists(db, "WashRequestedAt", "TEXT NULL");
             EnsureUsersTable(db);
 
             SeedDefaultAdminIfNeeded(scope.ServiceProvider);
@@ -116,6 +118,7 @@ internal static class Program
         services.AddTransient<CheckoutForm>();
         services.AddTransient<HistoryForm>();
         services.AddTransient<WashForm>();
+        services.AddTransient<WashQueueForm>();
 
         return services.BuildServiceProvider();
     }

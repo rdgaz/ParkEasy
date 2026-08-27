@@ -57,6 +57,10 @@ public class ParkingDbContext : DbContext
             entity.Property(e => e.WashNotes)
                 .HasMaxLength(300);
 
+            entity.Property(e => e.WashStatus);
+
+            entity.Property(e => e.WashRequestedAt);
+
             entity.Property(e => e.Status)
                 .IsRequired();
 

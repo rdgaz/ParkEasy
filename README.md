@@ -62,6 +62,7 @@ As configurações de negócio e de impressora ficam no arquivo `appsettings.jso
   "Pricing": {
     "GracePeriodMinutes": 10,
     "DailyMaximum": 50.00,
+    "ExemptWashFromParkingFee": true,
     "Moto": {
       "FirstHour": 5.00,
       "AdditionalHour": 3.00
@@ -93,6 +94,7 @@ As configurações de negócio e de impressora ficam no arquivo `appsettings.jso
 - `GracePeriodMinutes`: Período de tolerância em minutos (ex: 10 minutos = R$ 0,00), válido para todos os tipos de veículo.
 - `DailyMaximum`: Teto máximo diário de cobrança, válido para todos os tipos de veículo.
 - `Moto` / `Carro` / `VagaDupla`: cada tipo de veículo tem seu próprio `FirstHour` (valor cobrado até a primeira hora após a tolerância) e `AdditionalHour` (valor cobrado por hora, ou fração de hora, adicional). `VagaDupla` representa veículos que ocupam duas vagas físicas (ex: caminhonetes, vans) e conta como 2 vagas no painel de ocupação.
+- `ExemptWashFromParkingFee`: quando `true`, veículos com uma lavagem associada não pagam a tarifa de permanência no checkout — só o valor da lavagem é cobrado. Quando `false` (padrão), a tarifa de permanência é cobrada normalmente mesmo com lavagem.
 
 ### Serviço de Lavagem
 - A lavagem é um serviço avulso que pode ser adicionado a qualquer veículo já estacionado (menu **Estacionamento ➔ Adicionar/Editar Lavagem**, ou botão **LAVAGEM** na tela principal), antes de registrar a saída.

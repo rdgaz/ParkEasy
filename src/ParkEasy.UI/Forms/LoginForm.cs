@@ -80,6 +80,13 @@ public class LoginForm : Form
         panel.Controls.Add(_txtPassword);
         top += 40;
 
+#if DEBUG
+        Console.WriteLine("Aplicação rodando em modo Debug");
+        _txtUsername.Text = "admin";
+        _txtPassword.Text = "855683";
+#endif
+
+
         _lblError = Theme.CreateLabel(string.Empty, Theme.FontGrid, Theme.Danger);
         _lblError.Location = new Point(28, top);
         _lblError.AutoSize = false;

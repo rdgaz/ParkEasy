@@ -13,6 +13,12 @@ public class PricingSettings
     public int GracePeriodMinutes { get; set; } = 10;
     public decimal DailyMaximum { get; set; } = 50.00m;
 
+    /// <summary>
+    /// Quando true, veículos com lavagem associada não pagam a tarifa de permanência —
+    /// só o valor da lavagem é cobrado no checkout.
+    /// </summary>
+    public bool ExemptWashFromParkingFee { get; set; } = false;
+
     public VehicleTypePricing Moto { get; set; } = new() { FirstHour = 5.00m, AdditionalHour = 3.00m };
     public VehicleTypePricing Carro { get; set; } = new() { FirstHour = 10.00m, AdditionalHour = 5.00m };
     public VehicleTypePricing VagaDupla { get; set; } = new() { FirstHour = 15.00m, AdditionalHour = 8.00m };

@@ -84,6 +84,16 @@ public class ParkingService : IParkingService
         return await _repository.GetMostRecentByPlateAsync(normalizedPlate);
     }
 
+    public async Task<ParkingSession?> GetActiveSessionByPlateAsync(string plate)
+    {
+        var normalizedPlate = PlateNormalizer.Normalize(plate);
+
+        if (!PlateNormalizer.IsValid(normalizedPlate))
+            return null;
+
+        return await _repository.GetActiveByPlateAsync(normalizedPlate);
+    }
+
     public async Task<ParkingSession> FinalizeSessionAsync(long sessionId)
     {
         var session = await _repository.GetByIdAsync(sessionId);
@@ -95,7 +105,7 @@ public class ParkingService : IParkingService
             throw new InvalidOperationException("Esta sessão já foi finalizada.");
 
         var exitDateTime = DateTime.Now;
-        var finalAmount = _feeCalculator.CalculateFee(session.EntryDateTime, exitDateTime, session.VehicleType);
+        var finalAmount = _feeCalculator.CalculateFee(session.EntryDateTime, exitDateTime, session.VehicleType, session.WashAmount.HasValue);
 
         session.ExitDateTime = exitDateTime;
         session.FinalAmount = finalAmount;
@@ -128,9 +138,18 @@ public class ParkingService : IParkingService
         if (amount <= 0)
             throw new ArgumentException("Informe um valor de lavagem maior que zero.");
 
+        var isNewWash = session.WashStatus is null;
+
         session.WashTypeName = washTypeName.Trim();
         session.WashAmount = amount;
         session.WashNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+
+        if (isNewWash)
+        {
+            session.WashStatus = WashStatus.Pendente;
+            session.WashRequestedAt = DateTime.Now;
+        }
+
         session.UpdatedAt = DateTime.Now;
 
         await _repository.UpdateAsync(session);
@@ -155,6 +174,50 @@ public class ParkingService : IParkingService
         session.WashTypeName = null;
         session.WashAmount = null;
         session.WashNotes = null;
+        session.WashStatus = null;
+        session.WashRequestedAt = null;
+        session.UpdatedAt = DateTime.Now;
+
+        await _repository.UpdateAsync(session);
+
+        return session;
+    }
+
+    public async Task<List<ParkingSession>> GetActiveWashesAsync()
+    {
+        var activeSessions = await _repository.GetActiveSessionsAsync();
+        return activeSessions.Where(s => s.WashStatus is not null).ToList();
+    }
+
+    public async Task<ParkingSession> StartWashingAsync(long sessionId)
+    {
+        var session = await _repository.GetByIdAsync(sessionId);
+
+        if (session is null)
+            throw new InvalidOperationException("Sessão de estacionamento não encontrada.");
+
+        if (session.WashStatus != WashStatus.Pendente)
+            throw new InvalidOperationException("Esta lavagem não está pendente.");
+
+        session.WashStatus = WashStatus.Lavando;
+        session.UpdatedAt = DateTime.Now;
+
+        await _repository.UpdateAsync(session);
+
+        return session;
+    }
+
+    public async Task<ParkingSession> CompleteWashingAsync(long sessionId)
+    {
+        var session = await _repository.GetByIdAsync(sessionId);
+
+        if (session is null)
+            throw new InvalidOperationException("Sessão de estacionamento não encontrada.");
+
+        if (session.WashStatus != WashStatus.Lavando)
+            throw new InvalidOperationException("Esta lavagem não está em andamento.");
+
+        session.WashStatus = WashStatus.Concluida;
         session.UpdatedAt = DateTime.Now;
 
         await _repository.UpdateAsync(session);

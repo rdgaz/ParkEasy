@@ -14,9 +14,12 @@ public class ParkingFeeCalculator : IParkingFeeCalculator
         _pricing = pricingOptions.Value;
     }
 
-    public decimal CalculateFee(DateTime entryDateTime, DateTime exitDateTime, VehicleType vehicleType)
+    public decimal CalculateFee(DateTime entryDateTime, DateTime exitDateTime, VehicleType vehicleType, bool hasWash)
     {
         if (exitDateTime <= entryDateTime)
+            return 0m;
+
+        if (hasWash && _pricing.ExemptWashFromParkingFee)
             return 0m;
 
         var pricing = GetPricingFor(vehicleType);
@@ -41,9 +44,9 @@ public class ParkingFeeCalculator : IParkingFeeCalculator
         return Math.Min(fee, _pricing.DailyMaximum);
     }
 
-    public decimal CalculateCurrentFee(DateTime entryDateTime, VehicleType vehicleType)
+    public decimal CalculateCurrentFee(DateTime entryDateTime, VehicleType vehicleType, bool hasWash)
     {
-        return CalculateFee(entryDateTime, DateTime.Now, vehicleType);
+        return CalculateFee(entryDateTime, DateTime.Now, vehicleType, hasWash);
     }
 
     private VehicleTypePricing GetPricingFor(VehicleType vehicleType) => vehicleType switch

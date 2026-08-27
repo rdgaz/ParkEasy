@@ -18,6 +18,10 @@ public static class Theme
     public static readonly Color Danger = Color.FromArgb(239, 68, 68);      // Red
     public static readonly Color Warning = Color.FromArgb(245, 158, 11);    // Amber
     public static readonly Color Info = Color.FromArgb(59, 130, 246);       // Blue
+    public static readonly Color WashReadyHighlight = Color.FromArgb(19, 78, 74);        // Teal — lavagem concluída, aguardando retirada
+    public static readonly Color WashReadyHighlightSelected = Color.FromArgb(15, 118, 110);
+    public static readonly Color WashInProgressHighlight = Color.FromArgb(28, 51, 61);   // Teal sutil — lavagem pendente/em andamento
+    public static readonly Color WashInProgressHighlightSelected = Color.FromArgb(34, 68, 80);
 
     // Text colors
     public static readonly Color TextPrimary = Color.FromArgb(224, 224, 224);

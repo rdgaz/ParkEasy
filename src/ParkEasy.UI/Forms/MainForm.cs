@@ -27,6 +27,7 @@ public class MainForm : Form
 
     private List<ParkingSession> _activeSessions = [];
     private int _totalSpaces = 50;
+    private bool _washQueueEnabled = true;
 
     public MainForm(
         IServiceProvider serviceProvider,
@@ -56,6 +57,11 @@ public class MainForm : Form
         if (int.TryParse(_configuration["Parking:TotalSpaces"], out var spaces) && spaces > 0)
         {
             _totalSpaces = spaces;
+        }
+
+        if (bool.TryParse(_configuration["WashQueue:Enabled"], out var washQueueEnabled))
+        {
+            _washQueueEnabled = washQueueEnabled;
         }
 
         // 1. MenuStrip
@@ -155,7 +161,7 @@ public class MainForm : Form
         var menuEstacionamento = new ToolStripMenuItem("Estacionamento");
         var itemEntry = new ToolStripMenuItem("Nova Entrada (F2)", null, (_, _) => OpenEntryForm());
         var itemCheckout = new ToolStripMenuItem("Registrar Saída", null, (_, _) => OpenCheckoutForSelected());
-        var itemWash = new ToolStripMenuItem("Adicionar/Editar Lavagem", null, (_, _) => OpenWashForSelected());
+        var itemWash = new ToolStripMenuItem("Fila de Lavagens", null, (_, _) => OpenWashQueue());
         var itemHistory = new ToolStripMenuItem("Histórico de Permanências (F6)", null, (_, _) => OpenHistoryForm());
         var itemRefresh = new ToolStripMenuItem("Atualizar (F5)", null, async (_, _) => await LoadDataAsync());
 
@@ -271,7 +277,7 @@ public class MainForm : Form
 
         var btnWash = Theme.CreateSecondaryButton("LAVAGEM", 120);
         btnWash.Location = new Point(430, buttonY);
-        btnWash.Click += (_, _) => OpenWashForSelected();
+        btnWash.Click += (_, _) => OpenWashQueue();
         panel.Controls.Add(btnWash);
 
         var btnHistory = Theme.CreateSecondaryButton("HISTÓRICO (F6)", 150);
@@ -412,21 +418,40 @@ public class MainForm : Form
         foreach (var session in _activeSessions)
         {
             var elapsed = now - session.EntryDateTime;
-            var fee = _feeCalculator.CalculateFee(session.EntryDateTime, now, session.VehicleType);
+            var fee = _feeCalculator.CalculateFee(session.EntryDateTime, now, session.VehicleType, session.WashAmount.HasValue);
 
-            _gridActive.Rows.Add(
+            var washText = session.WashTypeName is null
+                ? "—"
+                : session.WashStatus.HasValue
+                    ? $"{session.WashTypeName} ({session.WashStatus.Value.ToDisplayName()})"
+                    : session.WashTypeName;
+
+            var rowIndex = _gridActive.Rows.Add(
                 session.TicketNumber,
                 session.Plate,
                 session.VehicleType.ToDisplayName(),
                 session.VehicleModel ?? "—",
                 session.CustomerName ?? "—",
                 session.CustomerPhone ?? "—",
-                session.WashTypeName ?? "—",
+                washText,
                 session.EntryDateTime.ToString("dd/MM/yyyy HH:mm"),
                 $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}",
                 fee.ToString("C2", brCulture),
                 session.Id
             );
+
+            if (session.WashStatus == WashStatus.Concluida)
+            {
+                var row = _gridActive.Rows[rowIndex];
+                row.DefaultCellStyle.BackColor = Theme.WashReadyHighlight;
+                row.DefaultCellStyle.SelectionBackColor = Theme.WashReadyHighlightSelected;
+            }
+            else if (session.WashStatus is WashStatus.Pendente or WashStatus.Lavando)
+            {
+                var row = _gridActive.Rows[rowIndex];
+                row.DefaultCellStyle.BackColor = Theme.WashInProgressHighlight;
+                row.DefaultCellStyle.SelectionBackColor = Theme.WashInProgressHighlightSelected;
+            }
         }
     }
 
@@ -474,24 +499,22 @@ public class MainForm : Form
         manageUsersForm.ShowDialog(this);
     }
 
-    private void OpenWashForSelected()
+    private void OpenWashQueue()
     {
-        if (_gridActive.CurrentRow is null || _gridActive.CurrentRow.Index < 0)
-        {
-            MessageBox.Show("Selecione um veículo na lista para adicionar/editar a lavagem.", "Aviso", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
-        }
-
-        if (_gridActive.CurrentRow.Cells["SessionId"].Value is not long sessionId) return;
-
         using var scope = _serviceProvider.CreateScope();
-        var washForm = scope.ServiceProvider.GetRequiredService<WashForm>();
-        washForm.SessionId = sessionId;
 
-        if (washForm.ShowDialog(this) == DialogResult.OK)
+        if (_washQueueEnabled)
         {
-            _ = LoadDataAsync();
+            var washQueueForm = scope.ServiceProvider.GetRequiredService<WashQueueForm>();
+            washQueueForm.ShowDialog(this);
         }
+        else
+        {
+            var washForm = scope.ServiceProvider.GetRequiredService<WashForm>();
+            washForm.ShowDialog(this);
+        }
+
+        _ = LoadDataAsync();
     }
 
     private void OpenHistoryForm()

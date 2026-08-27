@@ -106,7 +106,7 @@ public class CheckoutForm : Form
         card.Controls.Add(lblTypeHead);
 
         _lblVehicleType = Theme.CreateLabel("—", Theme.FontMedium, Theme.TextPrimary);
-        _lblVehicleType.Location = new Point(80, cardTop);
+        _lblVehicleType.Location = new Point(104, cardTop);
         card.Controls.Add(_lblVehicleType);
 
         cardTop += 28;
@@ -117,7 +117,7 @@ public class CheckoutForm : Form
         card.Controls.Add(lblModelHead);
 
         _lblModel = Theme.CreateLabel("—", Theme.FontMedium, Theme.TextPrimary);
-        _lblModel.Location = new Point(80, cardTop);
+        _lblModel.Location = new Point(104, cardTop);
         card.Controls.Add(_lblModel);
 
         cardTop += 28;
@@ -127,7 +127,7 @@ public class CheckoutForm : Form
         card.Controls.Add(lblCustHead);
 
         _lblCustomer = Theme.CreateLabel("—", Theme.FontMedium, Theme.TextPrimary);
-        _lblCustomer.Location = new Point(80, cardTop);
+        _lblCustomer.Location = new Point(104, cardTop);
         card.Controls.Add(_lblCustomer);
 
         cardTop += 34;
@@ -148,7 +148,7 @@ public class CheckoutForm : Form
         card.Controls.Add(lblEntHead);
 
         _lblEntry = Theme.CreateLabel("00/00/0000 00:00:00", Theme.FontNormal, Theme.TextPrimary);
-        _lblEntry.Location = new Point(80, cardTop);
+        _lblEntry.Location = new Point(104, cardTop);
         card.Controls.Add(_lblEntry);
 
         cardTop += 24;
@@ -158,7 +158,7 @@ public class CheckoutForm : Form
         card.Controls.Add(lblExitHead);
 
         _lblExit = Theme.CreateLabel("00/00/0000 00:00:00", Theme.FontNormal, Theme.TextPrimary);
-        _lblExit.Location = new Point(80, cardTop);
+        _lblExit.Location = new Point(104, cardTop);
         card.Controls.Add(_lblExit);
 
         cardTop += 24;
@@ -168,7 +168,7 @@ public class CheckoutForm : Form
         card.Controls.Add(lblDurHead);
 
         _lblDuration = Theme.CreateLabel("00:00:00", Theme.FontMedium, Theme.Info);
-        _lblDuration.Location = new Point(80, cardTop);
+        _lblDuration.Location = new Point(104, cardTop);
         card.Controls.Add(_lblDuration);
 
         cardTop += 24;
@@ -179,8 +179,8 @@ public class CheckoutForm : Form
 
         _lblWash = Theme.CreateLabel("—", Theme.FontMedium, Theme.Success);
         _lblWash.AutoSize = false;
-        _lblWash.Size = new Size(294, 40);
-        _lblWash.Location = new Point(80, cardTop);
+        _lblWash.Size = new Size(270, 40);
+        _lblWash.Location = new Point(104, cardTop);
         card.Controls.Add(_lblWash);
 
         panel.Controls.Add(card);
@@ -252,7 +252,7 @@ public class CheckoutForm : Form
 
             var now = DateTime.Now;
             var elapsed = now - _session.EntryDateTime;
-            var fee = _feeCalculator.CalculateFee(_session.EntryDateTime, now, _session.VehicleType);
+            var fee = _feeCalculator.CalculateFee(_session.EntryDateTime, now, _session.VehicleType, _session.WashAmount.HasValue);
             var brCulture = CultureInfo.GetCultureInfo("pt-BR");
 
             _lblTicket.Text = _session.TicketNumber;
