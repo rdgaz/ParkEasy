@@ -11,6 +11,7 @@ using ParkEasy.Domain.Interfaces;
 using ParkEasy.Infrastructure.Data;
 using ParkEasy.Infrastructure.Printing;
 using ParkEasy.Infrastructure.Repositories;
+using ParkEasy.Infrastructure.Sync;
 using ParkEasy.UI.Forms;
 
 namespace ParkEasy.UI;
@@ -35,11 +36,14 @@ internal static class Program
             var db = scope.ServiceProvider.GetRequiredService<ParkingDbContext>();
             db.Database.EnsureCreated();
             EnsureColumnExists(db, "VehicleType", "INTEGER NOT NULL DEFAULT 1");
-            EnsureColumnExists(db, "WashTypeName", "TEXT NULL");
-            EnsureColumnExists(db, "WashAmount", "REAL NULL");
-            EnsureColumnExists(db, "WashNotes", "TEXT NULL");
-            EnsureColumnExists(db, "WashStatus", "INTEGER NULL");
-            EnsureColumnExists(db, "WashRequestedAt", "TEXT NULL");
+            EnsureColumnRenamed(db, "WashTypeName", "ServiceType", "TEXT NULL");
+            EnsureColumnRenamed(db, "WashAmount", "ServiceAmount", "REAL NULL");
+            EnsureColumnRenamed(db, "WashNotes", "ServiceNotes", "TEXT NULL");
+            EnsureColumnRenamed(db, "WashStatus", "ServiceStatus", "INTEGER NULL");
+            EnsureColumnRenamed(db, "WashRequestedAt", "ServiceRequestedAt", "TEXT NULL");
+            EnsureColumnExists(db, "EntryUsername", "TEXT NULL");
+            EnsureColumnExists(db, "CheckoutUsername", "TEXT NULL");
+            EnsureColumnExists(db, "SyncedToSheets", "INTEGER NOT NULL DEFAULT 0");
             EnsureUsersTable(db);
 
             SeedDefaultAdminIfNeeded(scope.ServiceProvider);
@@ -74,7 +78,9 @@ internal static class Program
         services.Configure<ParkingSettings>(configuration.GetSection(ParkingSettings.SectionName));
         services.Configure<PricingSettings>(configuration.GetSection(PricingSettings.SectionName));
         services.Configure<WashPricingSettings>(configuration.GetSection(WashPricingSettings.SectionName));
+        services.Configure<WashQueueSettings>(configuration.GetSection(WashQueueSettings.SectionName));
         services.Configure<PrinterSettings>(configuration.GetSection(PrinterSettings.SectionName));
+        services.Configure<EasyParkSyncSettings>(configuration.GetSection(EasyParkSyncSettings.SectionName));
 
         // Logging
         services.AddLogging(builder =>
@@ -97,6 +103,7 @@ internal static class Program
         services.AddScoped<IParkingService, ParkingService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddSingleton<ICurrentUserContext, CurrentUserContext>();
+        services.AddSingleton<ISheetsSyncService, GoogleSheetsSyncService>();
 
         // Printer — choose implementation based on config
         var printerType = configuration.GetSection("Printer:Type").Value ?? "Mock";
@@ -117,7 +124,7 @@ internal static class Program
         services.AddTransient<EntryForm>();
         services.AddTransient<CheckoutForm>();
         services.AddTransient<HistoryForm>();
-        services.AddTransient<WashForm>();
+        services.AddTransient<ServiceForm>();
         services.AddTransient<WashQueueForm>();
 
         return services.BuildServiceProvider();
@@ -140,6 +147,31 @@ internal static class Program
         {
             db.Database.ExecuteSqlRaw(
                 $"ALTER TABLE ParkingSessions ADD COLUMN {columnName} {columnDefinition}");
+        }
+    }
+
+    /// <summary>
+    /// Renomeia uma coluna existente preservando os dados (ex: campos antigos de "Wash..."
+    /// virando "Service..." na unificação do Tipo Serviço). Se nem a coluna antiga nem a
+    /// nova existirem (banco muito antigo), cria a nova do zero como fallback.
+    /// </summary>
+    private static void EnsureColumnRenamed(ParkingDbContext db, string oldName, string newName, string fallbackColumnDefinition)
+    {
+        bool ColumnExists(string columnName) => db.Database
+            .SqlQueryRaw<string>($"SELECT name FROM pragma_table_info('ParkingSessions') WHERE name = '{columnName}'")
+            .AsEnumerable()
+            .Any();
+
+        if (ColumnExists(newName))
+            return;
+
+        if (ColumnExists(oldName))
+        {
+            db.Database.ExecuteSqlRaw($"ALTER TABLE ParkingSessions RENAME COLUMN {oldName} TO {newName}");
+        }
+        else
+        {
+            db.Database.ExecuteSqlRaw($"ALTER TABLE ParkingSessions ADD COLUMN {newName} {fallbackColumnDefinition}");
         }
     }
 

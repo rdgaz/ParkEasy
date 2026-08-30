@@ -27,7 +27,6 @@ public class MainForm : Form
 
     private List<ParkingSession> _activeSessions = [];
     private int _totalSpaces = 50;
-    private bool _washQueueEnabled = true;
 
     public MainForm(
         IServiceProvider serviceProvider,
@@ -57,11 +56,6 @@ public class MainForm : Form
         if (int.TryParse(_configuration["Parking:TotalSpaces"], out var spaces) && spaces > 0)
         {
             _totalSpaces = spaces;
-        }
-
-        if (bool.TryParse(_configuration["WashQueue:Enabled"], out var washQueueEnabled))
-        {
-            _washQueueEnabled = washQueueEnabled;
         }
 
         // 1. MenuStrip
@@ -336,7 +330,7 @@ public class MainForm : Form
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Modelo", HeaderText = "Modelo", MinimumWidth = 140, FillWeight = 140 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Cliente", HeaderText = "Cliente", MinimumWidth = 150, FillWeight = 150 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Telefone", HeaderText = "Telefone", MinimumWidth = 130, FillWeight = 130 });
-        _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Lavagem", HeaderText = "Lavagem", MinimumWidth = 100, FillWeight = 100 });
+        _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Servico", HeaderText = "Serviço", MinimumWidth = 100, FillWeight = 100 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Entrada", HeaderText = "Horário de Entrada", MinimumWidth = 160, FillWeight = 160 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "Tempo", HeaderText = "Permanência", MinimumWidth = 120, FillWeight = 120 });
         _gridActive.Columns.Add(new DataGridViewTextBoxColumn { Name = "ValorEstimado", HeaderText = "Valor Atual", MinimumWidth = 120, FillWeight = 120 });
@@ -418,13 +412,15 @@ public class MainForm : Form
         foreach (var session in _activeSessions)
         {
             var elapsed = now - session.EntryDateTime;
-            var fee = _feeCalculator.CalculateFee(session.EntryDateTime, now, session.VehicleType, session.WashAmount.HasValue);
+            var fee = session.ServiceType == ParkEasy.Application.ServiceTypeNames.Hora
+                ? _feeCalculator.CalculateFee(session.EntryDateTime, now, session.VehicleType)
+                : session.ServiceAmount ?? 0m;
 
-            var washText = session.WashTypeName is null
+            var washText = session.ServiceType is null
                 ? "—"
-                : session.WashStatus.HasValue
-                    ? $"{session.WashTypeName} ({session.WashStatus.Value.ToDisplayName()})"
-                    : session.WashTypeName;
+                : session.ServiceStatus.HasValue
+                    ? $"{session.ServiceType} ({session.ServiceStatus.Value.ToDisplayName()})"
+                    : session.ServiceType;
 
             var rowIndex = _gridActive.Rows.Add(
                 session.TicketNumber,
@@ -440,13 +436,13 @@ public class MainForm : Form
                 session.Id
             );
 
-            if (session.WashStatus == WashStatus.Concluida)
+            if (session.ServiceStatus == WashStatus.Concluida)
             {
                 var row = _gridActive.Rows[rowIndex];
                 row.DefaultCellStyle.BackColor = Theme.WashReadyHighlight;
                 row.DefaultCellStyle.SelectionBackColor = Theme.WashReadyHighlightSelected;
             }
-            else if (session.WashStatus is WashStatus.Pendente or WashStatus.Lavando)
+            else if (session.ServiceStatus is WashStatus.Pendente or WashStatus.Lavando)
             {
                 var row = _gridActive.Rows[rowIndex];
                 row.DefaultCellStyle.BackColor = Theme.WashInProgressHighlight;
@@ -502,17 +498,8 @@ public class MainForm : Form
     private void OpenWashQueue()
     {
         using var scope = _serviceProvider.CreateScope();
-
-        if (_washQueueEnabled)
-        {
-            var washQueueForm = scope.ServiceProvider.GetRequiredService<WashQueueForm>();
-            washQueueForm.ShowDialog(this);
-        }
-        else
-        {
-            var washForm = scope.ServiceProvider.GetRequiredService<WashForm>();
-            washForm.ShowDialog(this);
-        }
+        var washQueueForm = scope.ServiceProvider.GetRequiredService<WashQueueForm>();
+        washQueueForm.ShowDialog(this);
 
         _ = LoadDataAsync();
     }

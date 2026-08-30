@@ -65,13 +65,8 @@ public class WashQueueForm : Form
         mainPanel.Controls.Add(lblTitle);
 
         var topBar = new Panel { Dock = DockStyle.Top, Height = 48, Padding = new Padding(0, 8, 0, 8) };
-        var btnNewWash = Theme.CreateSuccessButton("+ NOVA LAVAGEM", 200);
-        btnNewWash.Location = new Point(0, 8);
-        btnNewWash.Click += (_, _) => OpenNewWash();
-        topBar.Controls.Add(btnNewWash);
-
         var btnRefresh = Theme.CreateSecondaryButton("ATUALIZAR", 140);
-        btnRefresh.Location = new Point(210, 8);
+        btnRefresh.Location = new Point(0, 8);
         btnRefresh.Click += async (_, _) => await LoadDataAsync();
         topBar.Controls.Add(btnRefresh);
 
@@ -206,23 +201,23 @@ public class WashQueueForm : Form
 
         grid.Rows.Clear();
 
-        var sessions = _activeWashes.Where(s => s.WashStatus == status).OrderBy(s => s.WashRequestedAt).ToList();
+        var sessions = _activeWashes.Where(s => s.ServiceStatus == status).OrderBy(s => s.ServiceRequestedAt).ToList();
         head.Text = $"{title} ({sessions.Count})";
 
         var now = DateTime.Now;
 
         foreach (var session in sessions)
         {
-            var elapsed = session.WashRequestedAt.HasValue ? now - session.WashRequestedAt.Value : TimeSpan.Zero;
+            var elapsed = session.ServiceRequestedAt.HasValue ? now - session.ServiceRequestedAt.Value : TimeSpan.Zero;
             var elapsedText = $"{(int)elapsed.TotalMinutes} min";
 
-            var averageMinutes = session.WashTypeName is not null && _washPricing.TryGetValue(session.WashTypeName, out var config)
+            var averageMinutes = session.ServiceType is not null && _washPricing.TryGetValue(session.ServiceType, out var config)
                 ? config.AverageMinutes
                 : 0;
 
             var timeText = averageMinutes > 0 ? $"{elapsedText} / ~{averageMinutes} min" : elapsedText;
 
-            var rowIndex = grid.Rows.Add(session.Plate, session.WashTypeName ?? "—", timeText, session.Id);
+            var rowIndex = grid.Rows.Add(session.Plate, session.ServiceType ?? "—", timeText, session.Id);
 
             if (selectedSessionId.HasValue && session.Id == selectedSessionId.Value)
                 grid.Rows[rowIndex].Selected = true;
@@ -273,21 +268,10 @@ public class WashQueueForm : Form
             return;
 
         using var scope = _serviceProvider.CreateScope();
-        var washForm = scope.ServiceProvider.GetRequiredService<WashForm>();
-        washForm.SessionId = sessionId;
+        var serviceForm = scope.ServiceProvider.GetRequiredService<ServiceForm>();
+        serviceForm.SessionId = sessionId;
 
-        if (washForm.ShowDialog(this) == DialogResult.OK)
-        {
-            _ = LoadDataAsync();
-        }
-    }
-
-    private void OpenNewWash()
-    {
-        using var scope = _serviceProvider.CreateScope();
-        var washForm = scope.ServiceProvider.GetRequiredService<WashForm>();
-
-        if (washForm.ShowDialog(this) == DialogResult.OK)
+        if (serviceForm.ShowDialog(this) == DialogResult.OK)
         {
             _ = LoadDataAsync();
         }

@@ -180,16 +180,10 @@ public class BematechMp4200PrinterService : IPrinterService
             var brCulture = System.Globalization.CultureInfo.GetCultureInfo("pt-BR");
 
             Write(ms, CMD_LEFT);
-            WriteText(ms, $"Estacionamento: {receipt.FinalAmount.ToString("C2", brCulture)}");
+            WriteText(ms, $"Serviço: {receipt.ServiceType ?? "Hora"}");
 
-            // Wash service (optional)
-            if (receipt.WashAmount.HasValue && !string.IsNullOrWhiteSpace(receipt.WashTypeName))
-            {
-                WriteText(ms, $"Lavagem ({receipt.WashTypeName}): {receipt.WashAmount.Value.ToString("C2", brCulture)}");
-
-                if (!string.IsNullOrWhiteSpace(receipt.WashNotes))
-                    WriteText(ms, $"Obs: {receipt.WashNotes}");
-            }
+            if (!string.IsNullOrWhiteSpace(receipt.ServiceNotes))
+                WriteText(ms, $"Obs: {receipt.ServiceNotes}");
 
             WriteText(ms, "");
 

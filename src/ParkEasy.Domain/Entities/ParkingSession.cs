@@ -26,17 +26,32 @@ public class ParkingSession
 
     public decimal? FinalAmount { get; set; }
 
-    public string? WashTypeName { get; set; }
+    /// <summary>Usuário logado que registrou a entrada do veículo.</summary>
+    public string? EntryUsername { get; set; }
 
-    public decimal? WashAmount { get; set; }
+    /// <summary>Usuário logado que confirmou o pagamento no checkout.</summary>
+    public string? CheckoutUsername { get; set; }
 
-    public string? WashNotes { get; set; }
+    /// <summary>"Hora", "Diária", "Mensal", ou um dos tipos de lavagem cadastrados em WashPricing.</summary>
+    public string? ServiceType { get; set; }
 
-    public WashStatus? WashStatus { get; set; }
+    /// <summary>Valor fixo do serviço — só usado quando ServiceType não é "Hora" (essa é calculada ao vivo).</summary>
+    public decimal? ServiceAmount { get; set; }
 
-    public DateTime? WashRequestedAt { get; set; }
+    public string? ServiceNotes { get; set; }
+
+    /// <summary>Só usado quando ServiceType é um tipo de lavagem — controla a fila Pendente/Lavando/Concluída.</summary>
+    public WashStatus? ServiceStatus { get; set; }
+
+    public DateTime? ServiceRequestedAt { get; set; }
 
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>
+    /// Falso sempre que a sessão é criada ou alterada — a sincronização com a planilha
+    /// (EasyParkSync) só marca como true depois de escrever a linha com sucesso.
+    /// </summary>
+    public bool SyncedToSheets { get; set; }
 }

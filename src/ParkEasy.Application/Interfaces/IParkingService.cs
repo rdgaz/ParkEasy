@@ -6,7 +6,7 @@ namespace ParkEasy.Application.Interfaces;
 
 public interface IParkingService
 {
-    Task<ParkingSession> RegisterEntryAsync(string plate, VehicleType vehicleType, string? vehicleModel, string? customerName, string? customerPhone);
+    Task<ParkingSession> RegisterEntryAsync(string plate, VehicleType vehicleType, string? vehicleModel, string? customerName, string? customerPhone, string serviceType, decimal? serviceAmount, string? serviceNotes);
     Task<ParkingSession?> FindMostRecentByPlateAsync(string plate);
     Task<ParkingSession?> GetActiveSessionByPlateAsync(string plate);
     Task<ParkingSession> FinalizeSessionAsync(long sessionId);

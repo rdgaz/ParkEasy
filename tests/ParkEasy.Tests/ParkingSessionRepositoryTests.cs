@@ -63,6 +63,31 @@ public class ParkingSessionRepositoryTests : IDisposable
         Assert.Null(result);
     }
 
+    [Fact]
+    public async Task GetUnsyncedSessionsAsync_ReturnsOnlySessionsNotYetSynced()
+    {
+        await SeedSessionAsync("AAA1111", DateTime.Now, "Ainda não sincronizado", ticketNumber: "000010");
+
+        var synced = new ParkingSession
+        {
+            TicketNumber = "000011",
+            Plate = "BBB2222",
+            VehicleType = VehicleType.Carro,
+            EntryDateTime = DateTime.Now,
+            Status = ParkingSessionStatus.Completed,
+            SyncedToSheets = true,
+            CreatedAt = DateTime.Now,
+            UpdatedAt = DateTime.Now
+        };
+        _context.ParkingSessions.Add(synced);
+        await _context.SaveChangesAsync();
+
+        var result = await _repository.GetUnsyncedSessionsAsync();
+
+        Assert.Single(result);
+        Assert.Equal("000010", result[0].TicketNumber);
+    }
+
     private async Task SeedSessionAsync(string plate, DateTime entryDateTime, string customerName, string ticketNumber)
     {
         _context.ParkingSessions.Add(new ParkingSession

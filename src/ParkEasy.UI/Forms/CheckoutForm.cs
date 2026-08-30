@@ -173,7 +173,7 @@ public class CheckoutForm : Form
 
         cardTop += 24;
 
-        var lblWashHead = Theme.CreateLabel("Lavagem:", Theme.FontNormal, Theme.TextSecondary);
+        var lblWashHead = Theme.CreateLabel("Serviço:", Theme.FontNormal, Theme.TextSecondary);
         lblWashHead.Location = new Point(16, cardTop);
         card.Controls.Add(lblWashHead);
 
@@ -252,7 +252,10 @@ public class CheckoutForm : Form
 
             var now = DateTime.Now;
             var elapsed = now - _session.EntryDateTime;
-            var fee = _feeCalculator.CalculateFee(_session.EntryDateTime, now, _session.VehicleType, _session.WashAmount.HasValue);
+            var isHora = _session.ServiceType == ParkEasy.Application.ServiceTypeNames.Hora;
+            var amount = isHora
+                ? _feeCalculator.CalculateFee(_session.EntryDateTime, now, _session.VehicleType)
+                : _session.ServiceAmount ?? 0m;
             var brCulture = CultureInfo.GetCultureInfo("pt-BR");
 
             _lblTicket.Text = _session.TicketNumber;
@@ -266,12 +269,11 @@ public class CheckoutForm : Form
             _lblExit.Text = now.ToString("dd/MM/yyyy HH:mm:ss");
             _lblDuration.Text = $"{(int)elapsed.TotalHours:D2}:{elapsed.Minutes:D2}:{elapsed.Seconds:D2}";
 
-            var washAmount = _session.WashAmount ?? 0;
-            _lblWash.Text = !string.IsNullOrWhiteSpace(_session.WashTypeName)
-                ? $"{_session.WashTypeName} — {washAmount.ToString("C2", brCulture)}"
+            _lblWash.Text = !string.IsNullOrWhiteSpace(_session.ServiceType)
+                ? $"{_session.ServiceType} — {amount.ToString("C2", brCulture)}"
                 : "—";
 
-            _lblAmount.Text = (fee + washAmount).ToString("C2", brCulture);
+            _lblAmount.Text = amount.ToString("C2", brCulture);
         }
         catch (Exception ex)
         {

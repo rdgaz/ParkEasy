@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using ParkEasy.Application;
 using ParkEasy.Application.Configuration;
 using ParkEasy.Application.DTOs;
 using ParkEasy.Application.Interfaces;
@@ -13,23 +14,45 @@ public class ParkingService : IParkingService
 {
     private readonly IParkingSessionRepository _repository;
     private readonly IParkingFeeCalculator _feeCalculator;
+    private readonly ICurrentUserContext _currentUserContext;
+    private readonly ISheetsSyncService _sheetsSyncService;
     private readonly ILogger<ParkingService> _logger;
     private readonly ParkingSettings _parkingSettings;
+    private readonly WashPricingSettings _washPricing;
+    private readonly WashQueueSettings _washQueueSettings;
 
     public ParkingService(
         IParkingSessionRepository repository,
         IParkingFeeCalculator feeCalculator,
+        ICurrentUserContext currentUserContext,
+        ISheetsSyncService sheetsSyncService,
         IOptions<ParkingSettings> parkingOptions,
+        IOptions<WashPricingSettings> washPricingOptions,
+        IOptions<WashQueueSettings> washQueueOptions,
         ILogger<ParkingService> logger)
     {
         _repository = repository;
         _feeCalculator = feeCalculator;
+        _currentUserContext = currentUserContext;
+        _sheetsSyncService = sheetsSyncService;
         _parkingSettings = parkingOptions.Value;
+        _washPricing = washPricingOptions.Value;
+        _washQueueSettings = washQueueOptions.Value;
         _logger = logger;
     }
 
+    /// <summary>
+    /// Dispara a sincronização com a planilha em segundo plano — nunca espera a rede,
+    /// nunca bloqueia quem chamou. SyncPendingAsync() garante internamente que não lança.
+    /// </summary>
+    private void TriggerBackgroundSync()
+    {
+        _ = _sheetsSyncService.SyncPendingAsync();
+    }
+
     public async Task<ParkingSession> RegisterEntryAsync(
-        string plate, VehicleType vehicleType, string? vehicleModel, string? customerName, string? customerPhone)
+        string plate, VehicleType vehicleType, string? vehicleModel, string? customerName, string? customerPhone,
+        string serviceType, decimal? serviceAmount, string? serviceNotes)
     {
         var normalizedPlate = PlateNormalizer.Normalize(plate);
 
@@ -38,6 +61,14 @@ public class ParkingService : IParkingService
 
         if (!PlateNormalizer.IsValid(normalizedPlate))
             throw new ArgumentException("A placa informada não é válida. Use o formato ABC1234 ou ABC1D23.");
+
+        if (string.IsNullOrWhiteSpace(serviceType))
+            throw new ArgumentException("Informe o tipo de serviço.");
+
+        var isHora = serviceType == ServiceTypeNames.Hora;
+
+        if (!isHora && (serviceAmount is null || serviceAmount <= 0))
+            throw new ArgumentException("Informe um valor de serviço maior que zero.");
 
         // Check for active duplicate
         var existing = await _repository.GetActiveByPlateAsync(normalizedPlate);
@@ -49,6 +80,8 @@ public class ParkingService : IParkingService
         var ticketNumber = sequence.ToString("D6");
 
         var now = DateTime.Now;
+        var isWash = _washPricing.ContainsKey(serviceType) && _washQueueSettings.Enabled;
+
         var session = new ParkingSession
         {
             TicketNumber = ticketNumber,
@@ -61,6 +94,12 @@ public class ParkingService : IParkingService
             ExitDateTime = null,
             Status = ParkingSessionStatus.Active,
             FinalAmount = null,
+            EntryUsername = _currentUserContext.Username,
+            ServiceType = serviceType,
+            ServiceAmount = isHora ? null : serviceAmount,
+            ServiceNotes = string.IsNullOrWhiteSpace(serviceNotes) ? null : serviceNotes.Trim(),
+            ServiceStatus = isWash ? WashStatus.Pendente : null,
+            ServiceRequestedAt = isWash ? now : null,
             CreatedAt = now,
             UpdatedAt = now
         };
@@ -70,6 +109,8 @@ public class ParkingService : IParkingService
         _logger.LogInformation(
             "Entrada registrada: Ticket={TicketNumber}, Placa={Plate}, Entrada={EntryDateTime}",
             session.TicketNumber, session.Plate, session.EntryDateTime);
+
+        TriggerBackgroundSync();
 
         return session;
     }
@@ -105,11 +146,15 @@ public class ParkingService : IParkingService
             throw new InvalidOperationException("Esta sessão já foi finalizada.");
 
         var exitDateTime = DateTime.Now;
-        var finalAmount = _feeCalculator.CalculateFee(session.EntryDateTime, exitDateTime, session.VehicleType, session.WashAmount.HasValue);
+        var finalAmount = session.ServiceType == ServiceTypeNames.Hora
+            ? _feeCalculator.CalculateFee(session.EntryDateTime, exitDateTime, session.VehicleType)
+            : session.ServiceAmount ?? 0m;
 
         session.ExitDateTime = exitDateTime;
         session.FinalAmount = finalAmount;
         session.Status = ParkingSessionStatus.Completed;
+        session.CheckoutUsername = _currentUserContext.Username;
+        session.SyncedToSheets = false;
         session.UpdatedAt = DateTime.Now;
 
         await _repository.UpdateAsync(session);
@@ -118,6 +163,8 @@ public class ParkingService : IParkingService
             "Estacionamento finalizado: Ticket={TicketNumber}, Placa={Plate}, Valor={FinalAmount:C}, Tempo={Duration}",
             session.TicketNumber, session.Plate, session.FinalAmount,
             session.ExitDateTime.Value - session.EntryDateTime);
+
+        TriggerBackgroundSync();
 
         return session;
     }
@@ -138,25 +185,28 @@ public class ParkingService : IParkingService
         if (amount <= 0)
             throw new ArgumentException("Informe um valor de lavagem maior que zero.");
 
-        var isNewWash = session.WashStatus is null;
+        var isNewWash = session.ServiceStatus is null;
 
-        session.WashTypeName = washTypeName.Trim();
-        session.WashAmount = amount;
-        session.WashNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+        session.ServiceType = washTypeName.Trim();
+        session.ServiceAmount = amount;
+        session.ServiceNotes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
 
         if (isNewWash)
         {
-            session.WashStatus = WashStatus.Pendente;
-            session.WashRequestedAt = DateTime.Now;
+            session.ServiceStatus = WashStatus.Pendente;
+            session.ServiceRequestedAt = DateTime.Now;
         }
 
+        session.SyncedToSheets = false;
         session.UpdatedAt = DateTime.Now;
 
         await _repository.UpdateAsync(session);
 
         _logger.LogInformation(
-            "Lavagem registrada: Ticket={TicketNumber}, Tipo={WashTypeName}, Valor={WashAmount:C}",
-            session.TicketNumber, session.WashTypeName, session.WashAmount);
+            "Lavagem registrada: Ticket={TicketNumber}, Tipo={ServiceType}, Valor={ServiceAmount:C}",
+            session.TicketNumber, session.ServiceType, session.ServiceAmount);
+
+        TriggerBackgroundSync();
 
         return session;
     }
@@ -171,14 +221,17 @@ public class ParkingService : IParkingService
         if (session.Status != ParkingSessionStatus.Active)
             throw new InvalidOperationException("Não é possível remover lavagem de uma sessão já finalizada.");
 
-        session.WashTypeName = null;
-        session.WashAmount = null;
-        session.WashNotes = null;
-        session.WashStatus = null;
-        session.WashRequestedAt = null;
+        session.ServiceType = null;
+        session.ServiceAmount = null;
+        session.ServiceNotes = null;
+        session.ServiceStatus = null;
+        session.ServiceRequestedAt = null;
+        session.SyncedToSheets = false;
         session.UpdatedAt = DateTime.Now;
 
         await _repository.UpdateAsync(session);
+
+        TriggerBackgroundSync();
 
         return session;
     }
@@ -186,7 +239,7 @@ public class ParkingService : IParkingService
     public async Task<List<ParkingSession>> GetActiveWashesAsync()
     {
         var activeSessions = await _repository.GetActiveSessionsAsync();
-        return activeSessions.Where(s => s.WashStatus is not null).ToList();
+        return activeSessions.Where(s => s.ServiceStatus is not null).ToList();
     }
 
     public async Task<ParkingSession> StartWashingAsync(long sessionId)
@@ -196,13 +249,16 @@ public class ParkingService : IParkingService
         if (session is null)
             throw new InvalidOperationException("Sessão de estacionamento não encontrada.");
 
-        if (session.WashStatus != WashStatus.Pendente)
+        if (session.ServiceStatus != WashStatus.Pendente)
             throw new InvalidOperationException("Esta lavagem não está pendente.");
 
-        session.WashStatus = WashStatus.Lavando;
+        session.ServiceStatus = WashStatus.Lavando;
+        session.SyncedToSheets = false;
         session.UpdatedAt = DateTime.Now;
 
         await _repository.UpdateAsync(session);
+
+        TriggerBackgroundSync();
 
         return session;
     }
@@ -214,13 +270,16 @@ public class ParkingService : IParkingService
         if (session is null)
             throw new InvalidOperationException("Sessão de estacionamento não encontrada.");
 
-        if (session.WashStatus != WashStatus.Lavando)
+        if (session.ServiceStatus != WashStatus.Lavando)
             throw new InvalidOperationException("Esta lavagem não está em andamento.");
 
-        session.WashStatus = WashStatus.Concluida;
+        session.ServiceStatus = WashStatus.Concluida;
+        session.SyncedToSheets = false;
         session.UpdatedAt = DateTime.Now;
 
         await _repository.UpdateAsync(session);
+
+        TriggerBackgroundSync();
 
         return session;
     }
@@ -264,7 +323,7 @@ public class ParkingService : IParkingService
     public async Task<(decimal totalRevenue, int totalVehicles)> GetHistorySummaryAsync(HistoryFilter filter)
     {
         var sessions = await GetHistoryAsync(filter);
-        var totalRevenue = sessions.Sum(s => (s.FinalAmount ?? 0) + (s.WashAmount ?? 0));
+        var totalRevenue = sessions.Sum(s => s.FinalAmount ?? 0);
         var totalVehicles = sessions.Count;
         return (totalRevenue, totalVehicles);
     }
@@ -299,10 +358,9 @@ public class ParkingService : IParkingService
             ExitDateTime = session.ExitDateTime.Value,
             Duration = session.ExitDateTime.Value - session.EntryDateTime,
             FinalAmount = session.FinalAmount.Value,
-            WashTypeName = session.WashTypeName,
-            WashAmount = session.WashAmount,
-            WashNotes = session.WashNotes,
-            TotalAmount = session.FinalAmount.Value + (session.WashAmount ?? 0)
+            ServiceType = session.ServiceType,
+            ServiceNotes = session.ServiceNotes,
+            TotalAmount = session.FinalAmount.Value
         };
         return Task.FromResult(receipt);
     }

@@ -73,10 +73,10 @@ public class ParkingSessionRepository : IParkingSessionRepository
             query = query.Where(s => s.VehicleType == vehicleType.Value);
 
         if (startDate.HasValue)
-            query = query.Where(s => s.EntryDateTime >= startDate.Value.Date);
+            query = query.Where(s => s.ExitDateTime >= startDate.Value.Date);
 
         if (endDate.HasValue)
-            query = query.Where(s => s.EntryDateTime < endDate.Value.Date.AddDays(1));
+            query = query.Where(s => s.ExitDateTime < endDate.Value.Date.AddDays(1));
 
         if (!string.IsNullOrWhiteSpace(plate))
         {
@@ -124,7 +124,7 @@ public class ParkingSessionRepository : IParkingSessionRepository
             .Where(s => s.Status == ParkingSessionStatus.Completed &&
                         s.ExitDateTime >= today &&
                         s.ExitDateTime < tomorrow)
-            .SumAsync(s => (s.FinalAmount ?? 0) + (s.WashAmount ?? 0));
+            .SumAsync(s => s.FinalAmount ?? 0);
     }
 
     public async Task<int> GetActiveCountAsync()
@@ -138,5 +138,13 @@ public class ParkingSessionRepository : IParkingSessionRepository
         return await _context.ParkingSessions
             .Where(s => s.Status == ParkingSessionStatus.Active)
             .SumAsync(s => s.VehicleType == VehicleType.VagaDupla ? 2 : 1);
+    }
+
+    public async Task<List<ParkingSession>> GetUnsyncedSessionsAsync()
+    {
+        return await _context.ParkingSessions
+            .Where(s => !s.SyncedToSheets)
+            .OrderBy(s => s.CreatedAt)
+            .ToListAsync();
     }
 }

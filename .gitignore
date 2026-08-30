@@ -18,3 +18,10 @@ packages/
 
 # Rider / JetBrains
 .idea/
+
+# Secrets — nunca versionar credenciais reais
+credentials.json
+**/credentials.json
+*.credentials.json
+easypark-*.json
+*-service-account*.json

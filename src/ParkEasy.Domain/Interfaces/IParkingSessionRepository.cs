@@ -21,4 +21,5 @@ public interface IParkingSessionRepository
     Task<decimal> GetTodayRevenueAsync();
     Task<int> GetActiveCountAsync();
     Task<int> GetOccupiedSpacesAsync();
+    Task<List<ParkingSession>> GetUnsyncedSessionsAsync();
 }

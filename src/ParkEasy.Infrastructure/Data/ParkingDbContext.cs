@@ -48,18 +48,27 @@ public class ParkingDbContext : DbContext
             entity.Property(e => e.FinalAmount)
                 .HasColumnType("REAL");
 
-            entity.Property(e => e.WashTypeName)
+            entity.Property(e => e.EntryUsername)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.CheckoutUsername)
+                .HasMaxLength(50);
+
+            entity.Property(e => e.ServiceType)
                 .HasMaxLength(100);
 
-            entity.Property(e => e.WashAmount)
+            entity.Property(e => e.ServiceAmount)
                 .HasColumnType("REAL");
 
-            entity.Property(e => e.WashNotes)
+            entity.Property(e => e.ServiceNotes)
                 .HasMaxLength(300);
 
-            entity.Property(e => e.WashStatus);
+            entity.Property(e => e.ServiceStatus);
 
-            entity.Property(e => e.WashRequestedAt);
+            entity.Property(e => e.ServiceRequestedAt);
+
+            entity.Property(e => e.SyncedToSheets)
+                .IsRequired();
 
             entity.Property(e => e.Status)
                 .IsRequired();

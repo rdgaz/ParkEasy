@@ -74,7 +74,7 @@ public class HistoryForm : Form
         // Date row
         _chkUseDateFilter = new CheckBox
         {
-            Text = "Filtrar Período:",
+            Text = "Filtrar Período (Saída):",
             Location = new Point(16, top),
             AutoSize = true,
             Font = Theme.FontMedium,
@@ -254,11 +254,13 @@ public class HistoryForm : Form
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Modelo", HeaderText = "Modelo", Width = 120 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Cliente", HeaderText = "Cliente", Width = 130 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Telefone", HeaderText = "Telefone", Width = 120 });
-        _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Lavagem", HeaderText = "Lavagem", Width = 90 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Servico", HeaderText = "Serviço", Width = 90 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Entrada", HeaderText = "Entrada", Width = 130 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Saida", HeaderText = "Saída", Width = 130 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Tempo", HeaderText = "Tempo", Width = 80 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Valor", HeaderText = "Valor Pago", Width = 100 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Atendente", HeaderText = "Atendente (Entrada)", Width = 130 });
+        _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "Caixa", HeaderText = "Caixa (Pagamento)", Width = 130 });
         _grid.Columns.Add(new DataGridViewTextBoxColumn { Name = "SessionId", Visible = false });
     }
 
@@ -319,11 +321,13 @@ public class HistoryForm : Form
                 session.VehicleModel ?? "—",
                 session.CustomerName ?? "—",
                 session.CustomerPhone ?? "—",
-                session.WashTypeName ?? "—",
+                session.ServiceType ?? "—",
                 session.EntryDateTime.ToString("dd/MM/yyyy HH:mm"),
                 session.ExitDateTime?.ToString("dd/MM/yyyy HH:mm") ?? "—",
                 $"{(int)duration.TotalHours:D2}:{duration.Minutes:D2}",
-                ((session.FinalAmount ?? 0m) + (session.WashAmount ?? 0m)).ToString("C2", brCulture),
+                (session.FinalAmount ?? 0m).ToString("C2", brCulture),
+                session.EntryUsername ?? "—",
+                session.CheckoutUsername ?? "—",
                 session.Id
             );
         }
